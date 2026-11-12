@@ -107,4 +107,75 @@ if(match){const now=JSON.parse(localStorage.getItem(k)||'[]');const i=now.findIn
 }catch{}await delay(1700)}
 };setTimeout(run,2500);
 })();
+</script>
+<style id="frame-smooth-v4">
+html{scroll-behavior:auto}html,body{overflow-x:clip;overscroll-behavior-y:auto;touch-action:pan-y}
+header{position:relative!important;top:auto!important;backdrop-filter:none!important}
+.toolbar{position:relative!important;top:auto!important;z-index:2!important;background:transparent!important;overflow:visible}
+.frame-bottom{touch-action:manipulation}
+.frame-trend-track{touch-action:pan-x pan-y}
+body.frame-grid #rows{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+body.frame-grid .anime-row{contain:layout style;content-visibility:auto;contain-intrinsic-size:auto 400px}
+body.frame-grid .anime-row>.identity{width:100%!important}
+body.frame-grid .anime-row>.identity .poster{width:100%!important;height:auto!important;aspect-ratio:2/3;object-fit:cover}
+body.frame-grid .anime-row>.progress{width:100%;min-width:0}
+body.frame-grid .anime-row>.progress .progress{display:flex;justify-content:space-between}
+body.frame-grid .anime-row>.rating{width:100%!important}
+.frame-poster-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0 14px}
+.frame-poster-tools button{border:1px solid #333;background:#1e1e1e;color:#eee;border-radius:9px;padding:10px 13px;font-size:12px;font-weight:650}
+.frame-poster-tools span{font-size:11px;color:#aaa}
+@media(min-width:650px){body.frame-grid #rows{grid-template-columns:repeat(auto-fill,minmax(165px,1fr))!important}}
+@media(max-width:600px){.shell{padding:0 12px 105px}.hero{padding-top:16px}.frame-trending{margin:10px 0 15px}.frame-bottom{padding-bottom:max(12px,env(safe-area-inset-bottom))}}
+</style>
+<script id="frame-posters-v4">
+(()=>{
+'use strict';
+const KEY='frame_anime_v2',toolbar=document.querySelector('.toolbar');if(!toolbar)return;
+const tools=document.createElement('div');tools.className='frame-poster-tools';
+tools.innerHTML='<button type="button" id="frame-load-posters">Load missing posters</button><span id="frame-poster-status" role="status"></span>';
+toolbar.after(tools);
+const btn=document.getElementById('frame-load-posters'),status=document.getElementById('frame-poster-status');
+let busy=false,stop=false;
+const read=()=>{try{const x=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(x)?x:[]}catch{return []}};
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const missing=()=>read().filter(a=>!a.poster&&!a.lookupFailed);
+const updateStatus=msg=>status.textContent=msg||missing().length+' missing posters';
+updateStatus();
+const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'').trim();
+async function lookup(a){
+const q=a.title;
+const url='https://api.jikan.moe/v4/anime?'+new URLSearchParams({q,limit:5,sfw:true});
+const res=await fetch(url,{cache:'no-store'});
+if(res.status===429){const e=new Error('Rate limited');e.rateLimit=true;throw e}
+if(!res.ok)throw Error('Anime catalog unavailable');
+const data=(await res.json()).data||[];
+const target=norm(q);
+return data.find(x=>[x.title,x.title_english,...(x.title_synonyms||[])].some(t=>norm(t)===target))||data[0]||null;
+}
+async function run(){
+if(busy)return;busy=true;stop=false;btn.disabled=true;
+let success=0,failed=0,rateLimited=false;
+const candidates=missing().slice(0,30);
+for(let i=0;i<candidates.length&&!stop;i++){
+const a=candidates[i];updateStatus('Finding posters '+(i+1)+'/'+candidates.length+' · '+success+' found');
+try{
+const x=await lookup(a);
+if(x){const poster=x.images?.webp?.large_image_url||x.images?.webp?.image_url||x.images?.jpg?.image_url;
+if(poster){
+const arr=read(),idx=arr.findIndex(y=>y.id===a.id);
+if(idx>=0&&!arr[idx].poster){arr[idx].poster=poster;arr[idx].total=arr[idx].total??x.episodes??null;arr[idx].type=x.type||arr[idx].type;localStorage.setItem(KEY,JSON.stringify(arr));success++;
+const row=[...document.querySelectorAll('.anime-row')].find(el=>el.dataset.id===a.id);
+const placeholder=row?.querySelector('.identity .poster');
+if(placeholder){const img=document.createElement('img');img.className='poster';img.src=poster;img.loading='lazy';img.alt='';img.referrerPolicy='no-referrer';placeholder.replaceWith(img)}
+}}
+}else failed++;
+}catch(e){if(e.rateLimit){rateLimited=true;break}failed++;if(failed>=3&&success===0)break}
+await wait(850);
+}
+busy=false;btn.disabled=false;
+updateStatus(rateLimited?'Catalog is rate-limiting requests. Tap again later.':success?'Loaded '+success+' posters · '+missing().length+' remaining':failed?'Could not reach the anime catalog. Try again later.':'All posters loaded');
+}
+btn.addEventListener('click',run);
+if(missing().length)setTimeout(run,3500);
+})();
 </script></body></html>
