@@ -160,6 +160,38 @@ return '<article class="anime series-card" data-group="'+safe(g.key)+'"><div cla
 el('empty').classList.toggle('hidden',!!shown.length);save();
 };
 
+
+const savingSeries=new Set();
+async function saveEntireAnime(a){
+const id=String(a.mal_id??a.id),title=a.title_english||a.title||'Anime';
+if(savingSeries.has(id))return;savingSeries.add(id);showToast('Finding all seasons…');
+try{
+const aniId=id.startsWith('ani-')?Number(id.slice(4)):await malToAni(id);
+const seasons=aniId?await collectSeasons(aniId):[];
+if(!seasons.length)throw Error('No connected seasons returned');
+const existing=seasons.map(m=>library.find(x=>String(x.id)===String(m.idMal)||String(x.id)==='ani-'+m.id)).filter(Boolean);
+const seriesKey=existing.find(x=>x.seriesKey)?.seriesKey||('series-'+seasons[0].id);
+const seriesName=existing.find(x=>x.seriesName)?.seriesName||seasons[0].title.english||seasons[0].title.romaji||base(title);
+let added=0;
+for(const m of seasons){
+const sid=m.idMal?String(m.idMal):'ani-'+m.id;
+let entry=library.find(x=>String(x.id)===sid||String(x.id)==='ani-'+m.id);
+if(entry){entry.seriesKey=seriesKey;entry.seriesName=seriesName;entry.startYear=m.startDate?.year||m.seasonYear||0;if(entry.total==null&&m.episodes!=null)entry.total=m.episodes;continue}
+library.push({id:sid,seriesKey,seriesName,startYear:m.startDate?.year||m.seasonYear||0,title:m.title.english||m.title.romaji||title,poster:m.coverImage?.large||img(a),total:m.episodes??null,watched:0,status:'Plan to Watch',type:m.format||'TV',synopsis:cleanTitle(m.description||'')});added++;
+}
+save();renderLibrary();showToast(added?added+' seasons saved':'All available seasons saved');
+}catch{
+if(!library.some(x=>String(x.id)===id)){library.push({id,title,poster:img(a),total:a.episodes??a.total??null,watched:0,status:'Plan to Watch',type:a.type||'Anime'});save();renderLibrary()}
+showToast('Saved anime. More seasons checked when opened');
+}finally{savingSeries.delete(id);document.querySelectorAll('#results .add').forEach(b=>{const item=b.closest('[data-id]');if(item&&library.some(x=>String(x.id)===item.dataset.id)){b.classList.add('saved');b.textContent='✓'}})}
+}
+el('results').addEventListener('click',e=>{
+const button=e.target.closest('[data-action="add"]');if(!button)return;
+e.stopImmediatePropagation();e.preventDefault();
+const a=catalog.find(x=>String(x.mal_id)===button.closest('[data-id]').dataset.id);
+if(a)saveEntireAnime(a);
+},true);
+
 let activeKey=null,activeSeasonId=null,seriesRequest=0;
 const sortedGroup=()=>{const g=groups().find(g=>g.key===activeKey);return g?[...g.items].sort((x,y)=>(x.startYear||0)-(y.startYear||0)||String(x.title).localeCompare(String(y.title),undefined,{numeric:true})):[]};
 function openSeries(key){
