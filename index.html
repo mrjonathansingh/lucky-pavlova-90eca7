@@ -26,24 +26,8 @@ btn.addEventListener('click',()=>{
  // Refresh the existing app state before enriching posters.
  location.reload();
 });
-if(localStorage.getItem(IMPORT_KEY)==='1'){
- btn.textContent='Screenshot list imported';btn.disabled=true;
- // Fetch a small batch of unmatched posters each visit; Jikan has rate limits.
- const run=async()=>{
- let arr;try{arr=JSON.parse(localStorage.getItem(key)||'[]')}catch{return}
- const targets=arr.filter(a=>String(a.id).startsWith('screens-')&&!a.poster&&!a.lookupFailed).slice(0,12);
- for(const a of targets){
-  try{
-   const r=await fetch('https://api.jikan.moe/v4/anime?'+new URLSearchParams({q:a.title,limit:'5',sfw:'true'}));
-   if(r.status===429)break;
-   if(r.ok){const data=(await r.json()).data||[];const match=data.find(x=>x.title?.toLowerCase()===a.title.toLowerCase()||x.title_english?.toLowerCase()===a.title.toLowerCase())||data[0];if(match){a.poster=match.images?.webp?.image_url||match.images?.jpg?.image_url||'';a.total=match.episodes??null;a.type=match.type||'Anime';a.year=match.year||'';a.mal_id=match.mal_id;}else a.lookupFailed=true;}
-   const current=JSON.parse(localStorage.getItem(key)||'[]');const idx=current.findIndex(x=>x.id===a.id);if(idx>=0){current[idx]={...current[idx],...a};localStorage.setItem(key,JSON.stringify(current))}
-  }catch{}
-  await new Promise(resolve=>setTimeout(resolve,1400));
- }
- if(targets.length)location.reload();
- };setTimeout(run,1800);
-}
+if(localStorage.getItem(IMPORT_KEY)==='1'){btn.textContent='Screenshot list imported';btn.disabled=true;}
+
 })();
 </script>
 <script>if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost')){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
