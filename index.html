@@ -62,7 +62,25 @@ const a=catalog.find(x=>String(x.mal_id)===id)||library.find(x=>String(x.id)===i
 $('details').classList.remove('hidden');document.body.style.overflow='hidden';
 const title=a.title_english||a.title,poster=img(a);
 $('detail-body').innerHTML='<div class="detail-head">'+(poster?'<img src="'+esc(poster)+'" alt="">':'')+'<div><h2>'+esc(title)+'</h2><p>'+esc(a.type||'Anime')+' · '+esc(a.episodes??a.total??'?')+' episodes</p><button class="detail-add" id="detail-save">Save to my list</button></div></div><h3>About this anime</h3><p id="synopsis">'+esc(a.synopsis||'Loading description…')+'</p><h3>Episode guide</h3><div id="episode-guide">Loading episode information…</div>';
-$('detail-save').onclick=()=>{if(library.some(x=>String(x.id)===id)){showToast('Already saved');return}library.unshift({id,title,poster,total:a.episodes??a.total??null,watched:0,status:'Plan to Watch',type:a.type||'Anime',synopsis:a.synopsis||''});save();showToast('Saved to your list')};
+$('detail-save').onclick=async()=>{
+const btn=$('detail-save');btn.disabled=true;btn.textContent='Saving all seasons…';
+try{
+const aniId=id.startsWith('ani-')?Number(id.slice(4)):await malToAni(id);
+const seasons=aniId?await collectSeasons(aniId):[];
+if(!seasons.length)throw Error('No seasons');
+let added=0;
+for(const m of seasons){
+const sid=m.idMal?String(m.idMal):'ani-'+m.id;
+if(library.some(x=>String(x.id)===sid||String(x.id)==='ani-'+m.id))continue;
+library.push({id:sid,title:m.title.english||m.title.romaji||title,poster:m.coverImage?.large||poster,total:m.episodes??null,watched:0,status:'Plan to Watch',type:m.format||'TV',synopsis:cleanTitle(m.description||'')});added++;
+}
+save();renderLibrary();showToast(added?added+' seasons added to My List':'All seasons already saved');btn.textContent='All seasons saved';
+}catch{
+if(!library.some(x=>String(x.id)===id)){library.push({id,title,poster,total:a.episodes??a.total??null,watched:0,status:'Plan to Watch',type:a.type||'Anime',synopsis:a.synopsis||''});save();renderLibrary();showToast('Saved this season. Other seasons unavailable right now')}
+else showToast('Already saved');
+btn.textContent='Saved to My List';
+}finally{btn.disabled=false}
+};
 if(a.synopsis){$('synopsis').textContent=a.synopsis.replace(/<[^>]*>/g,'');}
 const ani=id.startsWith('ani-');
 try{if(ani){const numeric=Number(id.slice(4));const q='query($id:Int){Media(id:$id,type:ANIME){description(asHtml:false)episodes streamingEpisodes{title url site}}}';const r=await fetch('https://graphql.anilist.co',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,variables:{id:numeric}})});const j=await r.json();if($('details').classList.contains('hidden'))return;const m=j.data?.Media;if(m?.description)$('synopsis').textContent=m.description.replace(/<[^>]*>/g,'');$('episode-guide').innerHTML=m?.streamingEpisodes?.length?'<ul class="detail-episodes">'+m.streamingEpisodes.slice(0,25).map(ep=>'<li>'+esc(ep.title||'Episode')+' · <a target="_blank" rel="noopener noreferrer" href="'+esc(ep.url)+'">Watch source</a></li>').join('')+'</ul>':'Episode titles are not available for this anime.'}
