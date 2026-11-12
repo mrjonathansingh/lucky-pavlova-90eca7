@@ -94,4 +94,33 @@ trending.addEventListener('click',e=>{const b=e.target.closest('[data-trend]');i
 loadTrending();
 })();
 </script>
-</body></html>
+
+<style id="frame-mobile-repair">
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+.shell,.toolbar,.tabs,.searchbox,.anime-row,.identity{min-width:0}
+.toolbar{display:flex;flex-wrap:wrap}.toolbar .tabs{min-width:0;width:100%;flex-basis:100%;order:3}
+.toolbar .searchbox{flex:1 1 160px;min-width:0;order:0}
+.toolbar .sort{flex:0 1 125px;max-width:125px;order:1}
+.toolbar>.button{max-width:100%;white-space:normal;order:4}
+.toolbar>.frame-switch{order:2}
+@media(max-width:600px){.toolbar{top:64px}.toolbar>.button{font-size:11px;padding:8px}.toolbar .tabs{overflow-x:auto}.anime-row{max-width:100%}body.frame-grid .anime-row>.progress{display:block}body.frame-grid .progress{display:flex;justify-content:space-between}body.frame-grid .bar{width:100%}}
+</style>
+<script id="frame-mobile-repair-script">
+(()=>{const k='frame_anime_v2';
+/* Background poster enrichment: never reload the page or overwrite progress. */
+const old=localStorage.getItem('frame_screenshots_import_v1');
+if(old!=='1')return;
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+const run=async()=>{
+let arr;try{arr=JSON.parse(localStorage.getItem(k)||'[]')}catch{return}
+const candidates=arr.filter(a=>String(a.id).startsWith('screens-')&&!a.poster&&!a.lookupFailed).slice(0,8);
+for(const item of candidates){
+try{const res=await fetch('https://api.jikan.moe/v4/anime?'+new URLSearchParams({q:item.title,limit:5,sfw:true}));
+if(res.status===429)break;if(!res.ok)continue;
+const data=(await res.json()).data||[];
+const match=data.find(a=>[a.title,a.title_english].some(t=>t?.toLowerCase()===item.title.toLowerCase()))||data[0];
+if(match){const now=JSON.parse(localStorage.getItem(k)||'[]');const i=now.findIndex(a=>a.id===item.id);if(i>=0&&!now[i].poster){now[i].poster=match.images?.webp?.image_url||match.images?.jpg?.image_url||'';now[i].total=now[i].total??match.episodes??null;now[i].type=match.type||now[i].type;localStorage.setItem(k,JSON.stringify(now));const poster=document.querySelector('[data-id="'+item.id+'"] .poster');if(poster&&poster.tagName!=='IMG'){const img=document.createElement('img');img.className='poster';img.alt='';img.loading='lazy';img.src=now[i].poster;poster.replaceWith(img)}}}
+}catch{}await delay(1700)}
+};setTimeout(run,2500);
+})();
+</script></body></html>
