@@ -16,7 +16,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      # GitHub ubuntu runners already provide Android SDK; avoid setup-android sdkmanager failure.
+      - name: Verify preinstalled Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          test -d "$ANDROID_HOME/platforms" || exit 1
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
