@@ -126,7 +126,7 @@ await selectSeason(seasons.find(m=>m.id===aniId)||root);
 
 $('filter').addEventListener('change',renderLibrary);save();load('discover');
 
-const KEY='frame_fresh_library_v1',el=id=>document.getElementById(id);
+const el=id=>document.getElementById(id);
 const safe=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const base=t=>String(t||'').replace(/\s*[:\-–]?\s*(?:season|series|part)\s*\d+.*$/i,'').replace(/\s+(?:II|III|IV|V|VI)$/i,'').replace(/\s*\(\d{4}\)\s*$/,'').trim();
 const groups=()=>{const m=new Map();for(const a of library){const key=base(a.title).toLowerCase()||String(a.id);if(!m.has(key))m.set(key,[]);m.get(key).push(a)}return [...m.entries()].map(([key,items])=>({key,items}))};
