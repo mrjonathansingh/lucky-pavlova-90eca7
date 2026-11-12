@@ -125,13 +125,7 @@ await selectSeason(seasons.find(m=>m.id===aniId)||root);
 };
 
 $('filter').addEventListener('change',renderLibrary);save();load('discover');
-})();
-</script>
-<style id="frame-library-series">
-.series-card{min-width:0}.series-card .cover{cursor:pointer}.series-card .series-open{width:100%;border:1px solid #4b4268;background:#262035;color:#e2d9ff;border-radius:9px;padding:11px 8px;margin-top:10px;font-size:12px;font-weight:800}.series-count{color:#b3a6ff!important;font-weight:700}.series-season{display:flex;gap:12px;align-items:flex-start;background:#181920;border:1px solid #34343e;border-radius:13px;padding:12px;margin:10px 0}.series-season img{width:66px;aspect-ratio:2/3;object-fit:cover;border-radius:8px;flex:none}.series-season-body{flex:1;min-width:0}.series-season-body strong{font-size:13px;display:block;margin-bottom:7px}.series-season-body p{font-size:11px;color:#aaa;margin:4px 0}.series-season-body select,.series-season-body input{width:100%;margin-top:8px;padding:9px;background:#24252e;color:#fff;border:1px solid #41424d;border-radius:8px}.series-season-body button{background:#b6a7ff;color:#101014;border:0;border-radius:8px;padding:9px 12px;margin-top:8px;font-weight:700;font-size:12px}.series-season-body .remove-season{background:#2c2026;color:#f6bac6;margin-left:6px}.series-back{padding:12px;background:#25252f;color:#fff;border:0;border-radius:10px;margin-bottom:16px}.series-title{font-size:25px;letter-spacing:-.7px}.series-info{font-size:12px;color:#aaa;line-height:1.5}.series-card .cover img{object-fit:cover}
-</style>
-<script id="frame-library-series-script">
-(()=>{
+
 const KEY='frame_fresh_library_v1',el=id=>document.getElementById(id);
 const safe=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const base=t=>String(t||'').replace(/\s*[:\-–]?\s*(?:season|series|part)\s*\d+.*$/i,'').replace(/\s+(?:II|III|IV|V|VI)$/i,'').replace(/\s*\(\d{4}\)\s*$/,'').trim();
@@ -170,5 +164,10 @@ if(b.dataset.edit==='remove'){library=library.filter(x=>String(x.id)!==id);save(
 if(b.dataset.edit==='episodes'){openDetails(id)}
 });
 renderLibrary();
+
 })();
-</script></body></html>
+</script>
+<style id="frame-library-series">
+.series-card{min-width:0}.series-card .cover{cursor:pointer}.series-card .series-open{width:100%;border:1px solid #4b4268;background:#262035;color:#e2d9ff;border-radius:9px;padding:11px 8px;margin-top:10px;font-size:12px;font-weight:800}.series-count{color:#b3a6ff!important;font-weight:700}.series-season{display:flex;gap:12px;align-items:flex-start;background:#181920;border:1px solid #34343e;border-radius:13px;padding:12px;margin:10px 0}.series-season img{width:66px;aspect-ratio:2/3;object-fit:cover;border-radius:8px;flex:none}.series-season-body{flex:1;min-width:0}.series-season-body strong{font-size:13px;display:block;margin-bottom:7px}.series-season-body p{font-size:11px;color:#aaa;margin:4px 0}.series-season-body select,.series-season-body input{width:100%;margin-top:8px;padding:9px;background:#24252e;color:#fff;border:1px solid #41424d;border-radius:8px}.series-season-body button{background:#b6a7ff;color:#101014;border:0;border-radius:8px;padding:9px 12px;margin-top:8px;font-weight:700;font-size:12px}.series-season-body .remove-season{background:#2c2026;color:#f6bac6;margin-left:6px}.series-back{padding:12px;background:#25252f;color:#fff;border:0;border-radius:10px;margin-bottom:16px}.series-title{font-size:25px;letter-spacing:-.7px}.series-info{font-size:12px;color:#aaa;line-height:1.5}.series-card .cover img{object-fit:cover}
+</style>
+</body></html>
