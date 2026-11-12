@@ -126,4 +126,49 @@ await selectSeason(seasons.find(m=>m.id===aniId)||root);
 
 $('filter').addEventListener('change',renderLibrary);save();load('discover');
 })();
+</script>
+<style id="frame-library-series">
+.series-card{min-width:0}.series-card .cover{cursor:pointer}.series-card .series-open{width:100%;border:1px solid #4b4268;background:#262035;color:#e2d9ff;border-radius:9px;padding:11px 8px;margin-top:10px;font-size:12px;font-weight:800}.series-count{color:#b3a6ff!important;font-weight:700}.series-season{display:flex;gap:12px;align-items:flex-start;background:#181920;border:1px solid #34343e;border-radius:13px;padding:12px;margin:10px 0}.series-season img{width:66px;aspect-ratio:2/3;object-fit:cover;border-radius:8px;flex:none}.series-season-body{flex:1;min-width:0}.series-season-body strong{font-size:13px;display:block;margin-bottom:7px}.series-season-body p{font-size:11px;color:#aaa;margin:4px 0}.series-season-body select,.series-season-body input{width:100%;margin-top:8px;padding:9px;background:#24252e;color:#fff;border:1px solid #41424d;border-radius:8px}.series-season-body button{background:#b6a7ff;color:#101014;border:0;border-radius:8px;padding:9px 12px;margin-top:8px;font-weight:700;font-size:12px}.series-season-body .remove-season{background:#2c2026;color:#f6bac6;margin-left:6px}.series-back{padding:12px;background:#25252f;color:#fff;border:0;border-radius:10px;margin-bottom:16px}.series-title{font-size:25px;letter-spacing:-.7px}.series-info{font-size:12px;color:#aaa;line-height:1.5}.series-card .cover img{object-fit:cover}
+</style>
+<script id="frame-library-series-script">
+(()=>{
+const KEY='frame_fresh_library_v1',el=id=>document.getElementById(id);
+const safe=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const base=t=>String(t||'').replace(/\s*[:\-–]?\s*(?:season|series|part)\s*\d+.*$/i,'').replace(/\s+(?:II|III|IV|V|VI)$/i,'').replace(/\s*\(\d{4}\)\s*$/,'').trim();
+const groups=()=>{const m=new Map();for(const a of library){const key=base(a.title).toLowerCase()||String(a.id);if(!m.has(key))m.set(key,[]);m.get(key).push(a)}return [...m.entries()].map(([key,items])=>({key,items}))};
+const oldRender=renderLibrary;
+renderLibrary=function(){
+const filter=el('filter').value,all=groups(),shown=all.filter(g=>filter==='All'||g.items.some(a=>a.status===filter));
+el('saved').innerHTML=shown.map(g=>{
+const a=g.items[0],title=base(a.title)||a.title,poster=g.items.find(x=>x.poster)?.poster||'',n=g.items.length;
+return '<article class="anime series-card" data-group="'+safe(g.key)+'"><div class="cover" data-action="open-series">'+(poster?'<img loading="lazy" src="'+safe(poster)+'" alt="">':'')+'</div><h3 data-action="open-series">'+safe(title)+'</h3><p class="series-count">'+n+' saved '+(n===1?'season':'seasons')+'</p><button class="series-open" data-action="open-series">View seasons & episodes</button></article>';
+}).join('');
+el('empty').classList.toggle('hidden',!!shown.length);save();
+};
+let activeKey=null;
+function openSeries(key){
+const group=groups().find(g=>g.key===key);if(!group)return;activeKey=key;
+const title=base(group.items[0].title)||group.items[0].title;
+el('details').classList.remove('hidden');document.body.style.overflow='hidden';
+el('detail-body').innerHTML='<h2 class="series-title">'+safe(title)+'</h2><p class="series-info">Choose a saved season to update progress, or open its episode guide.</p><h3>My saved seasons</h3><div id="my-seasons"></div><h3>More seasons & episode guides</h3><p class="series-info">Open a saved season below to browse related seasons and episode titles.</p>';
+renderSeasons();
+}
+function renderSeasons(){
+const group=groups().find(g=>g.key===activeKey);if(!group)return;
+el('my-seasons').innerHTML=group.items.map((a,i)=>'<div class="series-season" data-id="'+safe(a.id)+'">'+(a.poster?'<img src="'+safe(a.poster)+'" loading="lazy" alt="">':'')+'<div class="series-season-body"><strong>'+safe(a.title)+'</strong><p>'+safe(a.total??'?')+' episodes</p><select data-edit="status"><option'+(a.status==='Plan to Watch'?' selected':'')+'>Plan to Watch</option><option'+(a.status==='Watching'?' selected':'')+'>Watching</option><option'+(a.status==='Completed'?' selected':'')+'>Completed</option><option'+(a.status==='On Hold'?' selected':'')+'>On Hold</option></select><input type="number" inputmode="numeric" min="0" max="99999" data-edit="watched" value="'+Number(a.watched||0)+'" aria-label="Watched episode number"><button data-edit="episodes">View episodes</button><button class="remove-season" data-edit="remove">Remove</button></div></div>').join('');
+}
+el('saved').addEventListener('click',e=>{const b=e.target.closest('[data-action="open-series"]');if(!b)return;e.stopImmediatePropagation();openSeries(b.closest('[data-group]').dataset.group)},true);
+el('my-seasons')?.addEventListener('change',e=>{
+const id=e.target.closest('[data-id]')?.dataset.id,a=library.find(x=>String(x.id)===id);if(!a)return;
+if(e.target.dataset.edit==='status')a.status=e.target.value;
+if(e.target.dataset.edit==='watched'){let n=Math.max(0,Math.floor(Number(e.target.value)||0));if(a.total!=null)n=Math.min(n,a.total);a.watched=n;if(n>0&&a.status==='Plan to Watch')a.status='Watching';if(a.total!=null&&n>=a.total)a.status='Completed'}
+save();renderSeasons();
+});
+el('my-seasons')?.addEventListener('click',e=>{
+const b=e.target.closest('[data-edit]');if(!b)return;const id=b.closest('[data-id]').dataset.id,a=library.find(x=>String(x.id)===id);if(!a)return;
+if(b.dataset.edit==='remove'){library=library.filter(x=>String(x.id)!==id);save();renderLibrary();if(groups().some(g=>g.key===activeKey))renderSeasons();else{el('details').classList.add('hidden');document.body.style.overflow=''}return}
+if(b.dataset.edit==='episodes'){openDetails(id)}
+});
+renderLibrary();
+})();
 </script></body></html>
