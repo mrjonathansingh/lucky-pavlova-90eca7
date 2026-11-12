@@ -110,7 +110,19 @@ const seasonFields='id idMal title{english romaji} coverImage{large} description
 async function aniSeason(id){if(franchiseCache.has(id))return franchiseCache.get(id);const data=await aniQuery('query($id:Int){Media(id:$id,type:ANIME){'+seasonFields+'}}',{id});const m=data?.Media;if(m)franchiseCache.set(id,m);return m}
 async function malToAni(malId){const data=await aniQuery('query($idMal:Int){Media(idMal:$idMal,type:ANIME){id}}',{idMal:Number(malId)});return data?.Media?.id}
 function seasonOrder(a,b){const ay=a.startDate?.year||a.seasonYear||9999,by=b.startDate?.year||b.seasonYear||9999;return ay-by||(a.startDate?.month||0)-(b.startDate?.month||0)||(a.id-b.id)}
-async function collectSeasons(startId){const queue=[startId],visited=new Set(),seasons=[];while(queue.length&&visited.size<18){const id=queue.shift();if(visited.has(id))continue;visited.add(id);try{const m=await aniSeason(id);if(!m)continue;if(m.format!=='MOVIE'&&m.format!=='SPECIAL'&&m.format!=='MUSIC')seasons.push(m);for(const edge of m.relations?.edges||[]){if(['PREQUEL','SEQUEL'].includes(edge.relationType)&&edge.node?.type==='ANIME'&&!visited.has(edge.node.id))queue.push(edge.node.id)}}catch{if(!seasons.length)throw Error('Unable to load seasons')}}return seasons.sort(seasonOrder)}
+async function collectSeasons(startId){
+const visited=new Set(),seasons=[],queue=[startId];
+while(queue.length&&visited.size<30){
+const batch=queue.splice(0,5).filter(id=>!visited.has(id));batch.forEach(id=>visited.add(id));
+const results=await Promise.allSettled(batch.map(id=>aniSeason(id)));
+for(const result of results){if(result.status!=='fulfilled'||!result.value)continue;
+const m=result.value;if(!['MOVIE','SPECIAL','MUSIC','OVA','ONA'].includes(m.format))seasons.push(m);
+for(const edge of m.relations?.edges||[]){if(['PREQUEL','SEQUEL'].includes(edge.relationType)&&edge.node?.type==='ANIME'&&!visited.has(edge.node.id)&&!queue.includes(edge.node.id))queue.push(edge.node.id)}
+}
+}
+if(!seasons.length)throw Error('Unable to load seasons');
+return seasons.sort(seasonOrder);
+}
 let detailGeneration=0;
 openDetails=async function(id){
 const generation=++detailGeneration,a=catalog.find(x=>String(x.mal_id)===id)||library.find(x=>String(x.id)===id);if(!a)return;
