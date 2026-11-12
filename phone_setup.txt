@@ -1,0 +1,5 @@
+FRAME phone app
+
+To install as an app, upload all files in this ZIP to an HTTPS static web host (for example GitHub Pages or Netlify). Open the hosted URL in Chrome on Android, tap the three-dot menu, then Add to Home screen / Install app. On iPhone, open in Safari, tap Share, then Add to Home Screen.
+
+Opening index.html directly from Files may let you use the tracker but cannot install it as a proper PWA; service workers require HTTPS or localhost. Jikan search needs internet. Your library is stored in that browser on that device, not synced across phones. If you previously used a local HTML file, its saved data will not automatically transfer to the hosted app.
