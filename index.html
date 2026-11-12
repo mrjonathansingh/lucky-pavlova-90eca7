@@ -152,13 +152,15 @@ const group=groups().find(g=>g.key===activeKey);if(!group)return;
 el('my-seasons').innerHTML=group.items.map((a,i)=>'<div class="series-season" data-id="'+safe(a.id)+'">'+(a.poster?'<img src="'+safe(a.poster)+'" loading="lazy" alt="">':'')+'<div class="series-season-body"><strong>'+safe(a.title)+'</strong><p>'+safe(a.total??'?')+' episodes</p><select data-edit="status"><option'+(a.status==='Plan to Watch'?' selected':'')+'>Plan to Watch</option><option'+(a.status==='Watching'?' selected':'')+'>Watching</option><option'+(a.status==='Completed'?' selected':'')+'>Completed</option><option'+(a.status==='On Hold'?' selected':'')+'>On Hold</option></select><input type="number" inputmode="numeric" min="0" max="99999" data-edit="watched" value="'+Number(a.watched||0)+'" aria-label="Watched episode number"><button data-edit="episodes">View episodes</button><button class="remove-season" data-edit="remove">Remove</button></div></div>').join('');
 }
 el('saved').addEventListener('click',e=>{const b=e.target.closest('[data-action="open-series"]');if(!b)return;e.stopImmediatePropagation();openSeries(b.closest('[data-group]').dataset.group)},true);
-el('my-seasons')?.addEventListener('change',e=>{
+el('detail-body').addEventListener('change',e=>{
+if(!e.target.closest('#my-seasons'))return;
 const id=e.target.closest('[data-id]')?.dataset.id,a=library.find(x=>String(x.id)===id);if(!a)return;
 if(e.target.dataset.edit==='status')a.status=e.target.value;
 if(e.target.dataset.edit==='watched'){let n=Math.max(0,Math.floor(Number(e.target.value)||0));if(a.total!=null)n=Math.min(n,a.total);a.watched=n;if(n>0&&a.status==='Plan to Watch')a.status='Watching';if(a.total!=null&&n>=a.total)a.status='Completed'}
 save();renderSeasons();
 });
-el('my-seasons')?.addEventListener('click',e=>{
+el('detail-body').addEventListener('click',e=>{
+if(!e.target.closest('#my-seasons'))return;
 const b=e.target.closest('[data-edit]');if(!b)return;const id=b.closest('[data-id]').dataset.id,a=library.find(x=>String(x.id)===id);if(!a)return;
 if(b.dataset.edit==='remove'){library=library.filter(x=>String(x.id)!==id);save();renderLibrary();if(groups().some(g=>g.key===activeKey))renderSeasons();else{el('details').classList.add('hidden');document.body.style.overflow=''}return}
 if(b.dataset.edit==='episodes'){openDetails(id)}
