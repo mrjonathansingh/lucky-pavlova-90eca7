@@ -67,12 +67,14 @@ const btn=$('detail-save');btn.disabled=true;btn.textContent='Saving all seasons
 try{
 const aniId=id.startsWith('ani-')?Number(id.slice(4)):await malToAni(id);
 const seasons=aniId?await collectSeasons(aniId):[];
+const seriesName=seasons[0]?.title.english||seasons[0]?.title.romaji||title;
+const seriesKey=base(seriesName).toLowerCase();
 if(!seasons.length)throw Error('No seasons');
 let added=0;
 for(const m of seasons){
 const sid=m.idMal?String(m.idMal):'ani-'+m.id;
 if(library.some(x=>String(x.id)===sid||String(x.id)==='ani-'+m.id))continue;
-library.push({id:sid,title:m.title.english||m.title.romaji||title,poster:m.coverImage?.large||poster,total:m.episodes??null,watched:0,status:'Plan to Watch',type:m.format||'TV',synopsis:cleanTitle(m.description||'')});added++;
+library.push({id:sid,seriesKey,seriesName,title:m.title.english||m.title.romaji||title,poster:m.coverImage?.large||poster,total:m.episodes??null,watched:0,status:'Plan to Watch',type:m.format||'TV',synopsis:cleanTitle(m.description||'')});added++;
 }
 save();renderLibrary();showToast(added?added+' seasons added to My List':'All seasons already saved');btn.textContent='All seasons saved';
 }catch{
@@ -147,12 +149,12 @@ $('filter').addEventListener('change',renderLibrary);save();load('discover');
 const el=id=>document.getElementById(id);
 const safe=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const base=t=>String(t||'').replace(/\s*[:\-–]?\s*(?:season|series|part)\s*\d+.*$/i,'').replace(/\s+(?:II|III|IV|V|VI)$/i,'').replace(/\s*\(\d{4}\)\s*$/,'').trim();
-const groups=()=>{const m=new Map();for(const a of library){const key=base(a.title).toLowerCase()||String(a.id);if(!m.has(key))m.set(key,[]);m.get(key).push(a)}return [...m.entries()].map(([key,items])=>({key,items}))};
+const groups=()=>{const m=new Map();for(const a of library){const key=a.seriesKey||base(a.title).toLowerCase()||String(a.id);if(!m.has(key))m.set(key,[]);m.get(key).push(a)}return [...m.entries()].map(([key,items])=>({key,items}))};
 const oldRender=renderLibrary;
 renderLibrary=function(){
 const filter=el('filter').value,all=groups(),shown=all.filter(g=>filter==='All'||g.items.some(a=>a.status===filter));
 el('saved').innerHTML=shown.map(g=>{
-const a=g.items[0],title=base(a.title)||a.title,poster=g.items.find(x=>x.poster)?.poster||'',n=g.items.length;
+const a=g.items[0],title=a.seriesName||base(a.title)||a.title,poster=g.items.find(x=>x.poster)?.poster||'',n=g.items.length;
 return '<article class="anime series-card" data-group="'+safe(g.key)+'"><div class="cover" data-action="open-series">'+(poster?'<img loading="lazy" src="'+safe(poster)+'" alt="">':'')+'</div><h3 data-action="open-series">'+safe(title)+'</h3><p class="series-count">'+n+' saved '+(n===1?'season':'seasons')+'</p><button class="series-open" data-action="open-series">View seasons & episodes</button></article>';
 }).join('');
 el('empty').classList.toggle('hidden',!!shown.length);save();
@@ -160,7 +162,7 @@ el('empty').classList.toggle('hidden',!!shown.length);save();
 let activeKey=null;
 function openSeries(key){
 const group=groups().find(g=>g.key===key);if(!group)return;activeKey=key;
-const title=base(group.items[0].title)||group.items[0].title;
+const title=group.items[0].seriesName||base(group.items[0].title)||group.items[0].title;
 el('details').classList.remove('hidden');document.body.style.overflow='hidden';
 el('detail-body').innerHTML='<h2 class="series-title">'+safe(title)+'</h2><p class="series-info">Choose a saved season to update progress, or open its episode guide.</p><h3>My saved seasons</h3><div id="my-seasons"></div><h3>More seasons & episode guides</h3><p class="series-info">Open a saved season below to browse related seasons and episode titles.</p>';
 renderSeasons();
