@@ -165,7 +165,29 @@ const sortedGroup=()=>{const g=groups().find(g=>g.key===activeKey);return g?[...
 function openSeries(key){
 const g=groups().find(x=>x.key===key);if(!g)return;activeKey=key;activeSeasonId=String(g.items[0].id);seriesRequest++;
 el('details').classList.remove('hidden');document.body.style.overflow='hidden';
-renderSeries();loadSeriesEpisodes();
+renderSeries();loadSeriesEpisodes();expandSavedSeries(key);
+}
+async function expandSavedSeries(key){
+const group=groups().find(g=>g.key===key);if(!group)return;
+const first=group.items[0],requestKey=key;
+const info=el('detail-body').querySelector('.frame-series-header p');if(info)info.textContent='Finding all available seasons…';
+try{
+const aniId=String(first.id).startsWith('ani-')?Number(String(first.id).slice(4)):await malToAni(first.id);
+if(!aniId)throw Error('No anime identifier');
+const seasons=await collectSeasons(aniId);if(!seasons.length)throw Error('No related seasons');
+const canonical=seasons[0].title.english||seasons[0].title.romaji||first.seriesName||base(first.title);
+let added=0;
+for(const m of seasons){
+const sid=m.idMal?String(m.idMal):'ani-'+m.id;
+const existing=library.find(x=>String(x.id)===sid||String(x.id)==='ani-'+m.id);
+if(existing){existing.seriesKey=requestKey;existing.seriesName=canonical;existing.startYear=m.startDate?.year||m.seasonYear||0;continue}
+library.push({id:sid,seriesKey:requestKey,seriesName:canonical,startYear:m.startDate?.year||m.seasonYear||0,title:m.title.english||m.title.romaji||canonical,poster:m.coverImage?.large||'',total:m.episodes??null,watched:0,status:'Plan to Watch',type:m.format||'TV',synopsis:cleanTitle(m.description||'')});added++;
+}
+save();renderLibrary();
+if(activeKey===requestKey&&!el('details').classList.contains('hidden')){renderSeries();loadSeriesEpisodes();if(added)showToast(added+' more seasons found')}
+}catch{
+if(activeKey===requestKey){const info=el('detail-body').querySelector('.frame-series-header p');if(info)info.textContent=group.items.length+' saved · Could not load more seasons right now'}
+}
 }
 function renderSeries(){
 const items=sortedGroup(),selected=items.find(x=>String(x.id)===activeSeasonId)||items[0];if(!selected)return;
