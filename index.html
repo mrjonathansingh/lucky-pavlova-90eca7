@@ -170,4 +170,25 @@ renderLibrary();
 <style id="frame-library-series">
 .series-card{min-width:0}.series-card .cover{cursor:pointer}.series-card .series-open{width:100%;border:1px solid #4b4268;background:#262035;color:#e2d9ff;border-radius:9px;padding:11px 8px;margin-top:10px;font-size:12px;font-weight:800}.series-count{color:#b3a6ff!important;font-weight:700}.series-season{display:flex;gap:12px;align-items:flex-start;background:#181920;border:1px solid #34343e;border-radius:13px;padding:12px;margin:10px 0}.series-season img{width:66px;aspect-ratio:2/3;object-fit:cover;border-radius:8px;flex:none}.series-season-body{flex:1;min-width:0}.series-season-body strong{font-size:13px;display:block;margin-bottom:7px}.series-season-body p{font-size:11px;color:#aaa;margin:4px 0}.series-season-body select,.series-season-body input{width:100%;margin-top:8px;padding:9px;background:#24252e;color:#fff;border:1px solid #41424d;border-radius:8px}.series-season-body button{background:#b6a7ff;color:#101014;border:0;border-radius:8px;padding:9px 12px;margin-top:8px;font-weight:700;font-size:12px}.series-season-body .remove-season{background:#2c2026;color:#f6bac6;margin-left:6px}.series-back{padding:12px;background:#25252f;color:#fff;border:0;border-radius:10px;margin-bottom:16px}.series-title{font-size:25px;letter-spacing:-.7px}.series-info{font-size:12px;color:#aaa;line-height:1.5}.series-card .cover img{object-fit:cover}
 </style>
-</body></html>
+<style>.backup-tools{display:flex;gap:9px;flex-wrap:wrap;margin:22px 0}.backup-tools button,.backup-tools label{background:#22232c;border:1px solid #41414b;border-radius:10px;color:#eee;padding:11px 13px;font-size:12px;font-weight:700;cursor:pointer}.backup-tools input{display:none}.backup-hint{color:#9797a2;font-size:11px;line-height:1.5;margin-bottom:12px}</style><script id="frame-transfer">
+(()=>{
+const KEY='frame_fresh_library_v1',legacy='frame_anime_v2';
+const foot=document.querySelector('.footer');if(!foot)return;
+const panel=document.createElement('section');panel.innerHTML='<div class="backup-tools"><button id="export-frame" type="button">↓ Backup my list</button><label for="import-frame">↑ Restore my list<input id="import-frame" type="file" accept=".json,application/json"></label></div><p class="backup-hint">Save a backup before changing website addresses. Restoring adds saved anime without deleting your existing list.</p>';foot.before(panel);
+document.getElementById('export-frame').addEventListener('click',()=>{
+let current=[],old=[];try{current=JSON.parse(localStorage.getItem(KEY)||'[]')}catch{}try{old=JSON.parse(localStorage.getItem(legacy)||'[]')}catch{}
+const payload={app:'FRAME',version:1,exportedAt:new Date().toISOString(),library:Array.isArray(current)?current:[],legacy:Array.isArray(old)?old:[]};
+const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='FRAME-anime-backup.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+});
+document.getElementById('import-frame').addEventListener('change',async e=>{
+const file=e.target.files?.[0];if(!file)return;if(file.size>5e6){alert('Backup file is too large.');return}
+try{const data=JSON.parse(await file.text());if(data.app!=='FRAME'||!Array.isArray(data.library))throw Error('Not a FRAME backup');
+let existing=[];try{existing=JSON.parse(localStorage.getItem(KEY)||'[]')}catch{}
+if(!Array.isArray(existing))existing=[];const ids=new Set(existing.map(x=>String(x.id)));
+for(const item of data.library){if(!item||typeof item!=='object'||item.id==null||typeof item.title!=='string')continue;if(!ids.has(String(item.id))){existing.push(item);ids.add(String(item.id))}}
+localStorage.setItem(KEY,JSON.stringify(existing));if(Array.isArray(data.legacy)&&data.legacy.length&&!localStorage.getItem(legacy))localStorage.setItem(legacy,JSON.stringify(data.legacy));
+alert('Backup restored. '+existing.length+' anime saved.');location.reload();
+}catch(err){alert('Could not restore this backup: '+err.message)}finally{e.target.value=''}
+});
+})();
+</script></body></html>
