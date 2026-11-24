@@ -1,0 +1,6 @@
+name = "frame-tmdb"
+main = "worker.js"
+compatibility_date = "2026-11-24"
+
+# Set TMDB_API_KEY in Cloudflare Workers > Settings > Variables and Secrets.
+# Never add the value here or commit it to GitHub.
