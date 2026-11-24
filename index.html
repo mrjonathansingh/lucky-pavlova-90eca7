@@ -189,12 +189,55 @@ if(!episodes.length)episodes=Array.from({length:limit},(_,i)=>({number:i+1,title
 const guide=$('episode-guide');
 function draw(note){
 if(!alive())return;
-guide.innerHTML='<p class="section-note">'+esc(note)+'</p><div class="frame-guide-episode-list">'+episodes.map(ep=>{
+guide.innerHTML='<p class="section-note">'+esc(note)+'</p><button class="frame-tmdb-setup" type="button" data-tmdb-config>⚙ '+(tmdbKey()?'Update TMDB key':'Enable richer episode details (TMDB)')+'</button><div class="frame-guide-episode-list">'+episodes.map(ep=>{
 const n=Number(ep.number),image=ep.still||poster,description=cleanTitle(ep.description||'');
 return '<article class="frame-guide-episode"><div class="frame-guide-episode-image">'+(image?'<img src="'+esc(image)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':'<span>'+n+'</span>')+'</div><div class="frame-guide-episode-content"><small>EPISODE '+n+(ep.filler?' · FILLER':'')+'</small><h4>'+esc(ep.title&&ep.title!=='Episode '+n?ep.title:'Episode '+n)+'</h4>'+(description?'<p>'+esc(description)+'</p>':'')+(ep.url?'<a href="'+esc(ep.url)+'" target="_blank" rel="noopener noreferrer">Episode source ↗</a>':'')+(m.idMal?'<button type="button" data-guide-detail="'+n+'">Show episode details ↗</button>':'<span class="frame-guide-no-details">Detailed summaries not supplied by this catalog</span>')+'<div class="frame-guide-detail" data-guide-slot="'+n+'"></div></div></article>';
 }).join('')+'</div>';
 }
 draw('Showing available episode information. Select an episode to request its full details.');
+// TMDB is optional: the credential is entered on this device, never committed to GitHub.
+const tmdbKey=()=>sessionStorage.getItem('frame_tmdb_key')||'';
+const tmdbUrl=(route,params={})=>'https://api.themoviedb.org/3/'+route+'?'+new URLSearchParams({...params,api_key:tmdbKey(),language:'en-US'});
+const tmdbGet=async(route,params={})=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),6500);try{const r=await fetch(tmdbUrl(route,params),{signal:c.signal});if(!r.ok)throw Error('TMDB '+r.status);return await r.json()}finally{clearTimeout(t)}};
+const tmdbNorm=x=>String(x||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+async function enrichTmdb(){
+if(!tmdbKey()||!alive())return;
+const title=m.title.english||m.title.romaji||'',original=m.title.romaji||title;
+try{
+const found=await tmdbGet('search/tv',{query:title,include_adult:'false'});
+if(!alive())return;
+const expectedYear=Number(m.startDate?.year||m.seasonYear||0);
+const candidates=(found.results||[]).filter(x=>{
+const names=[x.name,x.original_name].map(tmdbNorm);
+const wanted=[title,original].map(tmdbNorm);
+return names.some(n=>wanted.includes(n))&&(!expectedYear||!x.first_air_date||Math.abs(Number(x.first_air_date.slice(0,4))-expectedYear)<=3);
+});
+if(candidates.length!==1)return;
+const tv=await tmdbGet('tv/'+candidates[0].id);
+if(!alive())return;
+const validSeasons=(tv.seasons||[]).filter(x=>x.season_number>0&&x.episode_count>0);
+const exactCount=count?validSeasons.filter(x=>x.episode_count===count):[];
+// Never attach an unrelated TV season to an anime just because titles match.
+if(exactCount.length!==1)return;
+const season=await tmdbGet('tv/'+tv.id+'/season/'+exactCount[0].season_number);
+if(!alive()||!Array.isArray(season.episodes))return;
+const matched=season.episodes.filter(ep=>ep.episode_number>0&&ep.episode_number<=50);
+if(!matched.length)return;
+const byNumber=new Map(episodes.map(ep=>[Number(ep.number),ep]));
+let enriched=0;
+for(const ep of matched){
+const old=byNumber.get(ep.episode_number);
+if(!old)continue;
+if(ep.overview&&!old.description){old.description=ep.overview;enriched++}
+if(ep.still_path)old.still='https://image.tmdb.org/t/p/w300'+ep.still_path;
+if(ep.name&&(!old.title||old.title==='Episode '+ep.episode_number))old.title=ep.name;
+if(ep.air_date)old.airDate=ep.air_date;
+}
+if(enriched||matched.some(ep=>ep.still_path))draw('Episode details enriched by TMDB, matched by exact title and season episode count.');
+}catch(e){if(alive()){const note=guide.querySelector('.section-note');if(note&&/TMDB/.test(String(e)))note.textContent='TMDB could not load. Existing episode data is still available.'}}
+}
+
+if(tmdbKey())enrichTmdb();
 if(m.idMal){
 const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),5000);
 try{
@@ -210,6 +253,9 @@ draw('Official episode titles loaded. Tap “Show episode details” for a full 
 }catch{}finally{clearTimeout(timeout)}
 }
 guide.onclick=async e=>{
+const config=e.target.closest('[data-tmdb-config]');
+if(config){const value=window.prompt('TMDB API key (stored only for this browser tab; never uploaded to GitHub):','');if(value&&/^[a-f0-9]{32}$/i.test(value.trim())){sessionStorage.setItem('frame_tmdb_key',value.trim());enrichTmdb()}else if(value)window.alert('That does not look like a TMDB v3 API key.');return}
+
 const btn=e.target.closest('[data-guide-detail]');if(!btn||!alive())return;
 const n=Number(btn.dataset.guideDetail),slot=guide.querySelector('[data-guide-slot="'+n+'"]');
 if(!slot||btn.disabled)return;
@@ -1011,4 +1057,4 @@ window.addEventListener('unhandledrejection',()=>{},false);
 .frame-guide-no-details{font-size:11px;color:#9991a4}
 .frame-guide-detail p{margin:10px 0 0}
 @media(max-width:600px){.frame-guide-episode{gap:10px;padding:10px}.frame-guide-episode-image{width:90px;height:75px}.frame-guide-episode-content h4{font-size:13px}}
-</style></body></html>
+</style><style id="frame-tmdb-enrichment-style">.frame-tmdb-setup{margin:6px 0 12px;padding:9px 12px;border:1px solid #ffffff25;border-radius:9px;background:#262132;color:#eee3ff;font-size:12px;cursor:pointer}</style></body></html>
