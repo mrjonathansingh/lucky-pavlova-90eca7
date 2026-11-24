@@ -787,7 +787,7 @@ const palette=document.createElement('div');palette.className='frame-theme-picke
 document.querySelector('.top')?.appendChild(palette);
 palette.addEventListener('click',e=>{const b=e.target.closest('[data-frame-theme]');if(b)applyTheme(b.dataset.frameTheme)});applyTheme(theme);
 const section=document.createElement('section');section.className='frame-trending';section.innerHTML='<div class="frame-trending-heading"><div><span class="frame-section-kicker">WHAT THE WORLD IS WATCHING</span><h2>Trending right now<span class="frame-trending-spark"> ✳</span></h2></div><span class="frame-trending-source">LIVE ANIME PICKS</span></div><div class="frame-trending-stage"><div class="frame-trending-placeholder">Finding the latest anime…</div></div><div class="frame-trending-controls"><div class="frame-trending-dots"></div><div class="frame-trending-arrows"><button data-trend-prev aria-label="Previous trending anime">←</button><button data-trend-next aria-label="Next trending anime">→</button></div></div>';
-home.after(section);
+home.before(section);
 let list=[],index=0,interval=null;
 function display(){
 if(!list.length)return;
@@ -817,4 +817,43 @@ finally{clearTimeout(timeout)}
 section.addEventListener('click',e=>{if(e.target.closest('[data-trend-retry]'))fetchTrending()});
 fetchTrending();
 })();
-</script></body></html>
+</script><style id="frame-real-home-fix">
+/* The trending stage is the actual hero, above the user's personal watchlist. */
+body.frame-home-mode .frame-trending{display:block!important}
+.frame-trending{margin-top:4px!important;margin-bottom:22px!important}
+.frame-trending-heading{margin:8px 0 14px!important}
+.frame-trending-heading h2{font-size:clamp(25px,3vw,33px)!important}
+.frame-trending-stage{min-height:clamp(390px,40vw,510px)!important}
+.frame-trending-background{background-position:center 30%!important}
+.frame-trending-body{padding:clamp(26px,4vw,54px)!important}
+.frame-trending-body h3{font-size:clamp(34px,4.2vw,58px)!important}
+.frame-trending-poster{height:75%;top:12%;width:25%;right:8%}
+.frame-home-intro{padding:10px 0 14px!important}
+.frame-home-intro h1{font-size:clamp(28px,3.8vw,44px)!important;letter-spacing:-1.4px!important;margin:8px 0!important;line-height:1.1!important}
+.frame-home-intro h1 br{display:none}.frame-home-intro h1 em:before{content:" "}
+.frame-home-intro-mark{display:none!important}
+.frame-home-intro .frame-home-sub{font-size:12px!important}
+.frame-feature-empty{min-height:0!important;border-radius:15px!important;background:linear-gradient(100deg,#171421,#241b31)!important}
+.frame-feature-empty .frame-feature-content{padding:21px 25px!important;max-width:none!important;display:flex;align-items:center;gap:18px;justify-content:space-between;flex-wrap:wrap}
+.frame-feature-empty .frame-feature-content h2{font-size:clamp(18px,2vw,25px)!important;margin:0!important;letter-spacing:-.5px!important}
+.frame-feature-empty .frame-feature-content p{display:none}
+.frame-feature-empty .frame-feature-tag{display:none}
+.frame-feature-empty .frame-feature-button{width:auto!important;min-width:0!important;padding:12px 17px!important}
+.frame-home-metrics{margin:16px 0 25px!important}
+@media(min-width:1000px){
+.frame-trending{margin-left:var(--frame-rail)!important;width:calc(100% - var(--frame-rail))!important;padding-left:clamp(35px,4vw,82px)!important;padding-right:clamp(35px,4vw,82px)!important}
+.frame-trending-stage{min-height:440px!important}
+.frame-trending-body{width:68%!important}
+.frame-home-intro{padding-top:0!important}
+}
+@media(max-width:600px){
+.frame-trending{margin-top:0!important;margin-bottom:12px!important}
+.frame-trending-stage{min-height:380px!important}
+.frame-trending-body{padding:22px!important;width:100%!important}
+.frame-trending-body h3{font-size:30px!important;max-width:86%}
+.frame-trending-poster{width:38%;height:47%;top:6%;right:7%}
+.frame-home-intro h1{font-size:27px!important}
+.frame-feature-empty .frame-feature-content{padding:16px!important}
+.frame-feature-empty .frame-feature-button{width:100%!important}
+}
+</style></body></html>
