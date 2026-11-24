@@ -740,4 +740,81 @@ body{background:radial-gradient(ellipse 65% 60% at 68% -15%,#242035 0%,#0a0a10 6
 #frame-search-screen .search{max-width:680px}
 }
 @media(min-width:1500px){:root{--frame-rail:260px}.app{padding-left:6vw;padding-right:6vw}.frame-feature{min-height:590px}}
-</style></body></html>
+</style><style id="frame-trending-theme-design">
+:root{--frame-accent:#b9a2ff;--frame-theme-glow:#252035}
+body{background:radial-gradient(ellipse 75% 440px at 60% -130px,var(--frame-theme-glow),#08090b 80%) fixed;transition:background-color .4s}
+.logo i,.frame-home-intro h1 em,.frame-section-kicker,.frame-feature-tag,.frame-trending-spark{color:var(--frame-accent)!important}
+.frame-feature-button,.frame-home-primary{background:var(--frame-accent)!important;color:#111018!important}
+.frame-feature-progress span{background:var(--frame-accent)!important}
+.bottom button.on{color:var(--frame-accent)!important;background:color-mix(in srgb,var(--frame-accent) 12%,transparent)!important}
+.frame-theme-picker{display:flex;align-items:center;gap:13px;margin-left:auto;margin-right:20px}
+.frame-theme-picker>span{font-size:9px;font-weight:800;letter-spacing:1.5px;color:#aaa4b4}
+.frame-theme-picker>div{display:flex;gap:9px}
+.frame-theme-picker button{width:22px;height:22px;border:2px solid #ffffff22;background:var(--swatch);border-radius:50%;padding:0;box-shadow:0 2px 8px #0005}
+.frame-theme-picker button.selected{outline:2px solid var(--swatch);outline-offset:3px}
+.frame-trending{max-width:1180px;margin:0 auto 55px;padding:0 clamp(16px,3.5vw,40px)}
+.frame-trending-heading{display:flex;justify-content:space-between;align-items:end;gap:15px;margin:15px 0 20px}
+.frame-trending-heading h2{font-size:clamp(25px,4vw,34px);letter-spacing:-1px;margin:8px 0 0}
+.frame-trending-source{font-size:9px;color:#a8a0b5;letter-spacing:1.5px}
+.frame-trending-stage{position:relative;isolation:isolate;min-height:350px;display:flex;align-items:center;overflow:hidden;border-radius:22px;border:1px solid #ffffff22;background:linear-gradient(130deg,var(--frame-theme-glow),#111018)}
+.frame-trending-background{position:absolute;inset:0;z-index:-1;background-size:cover;background-position:center;animation:frame-trend-reveal .6s ease both}
+.frame-trending-body{padding:35px 42px;width:67%;z-index:1;animation:frame-trend-reveal .5s ease both}
+.frame-trending-rank{font-size:20px;font-weight:900;color:var(--frame-accent)}.frame-trending-rank span{font-size:10px;letter-spacing:1.6px;color:#e3ddec}
+.frame-trending-body h3{font-size:clamp(28px,4vw,48px);letter-spacing:-1.5px;line-height:1.07;margin:16px 0 12px;max-width:590px}
+.frame-trending-body p{font-size:12px;color:#c4bdcb;margin:0 0 25px}
+.frame-trending-body>button{background:#f3effb;border:0;border-radius:11px;padding:13px 19px;color:#15121c;font-weight:850;font-size:12px}
+.frame-trending-poster{position:absolute;right:6%;top:10%;height:80%;width:27%;object-fit:cover;border-radius:15px;transform:rotate(4deg);box-shadow:0 22px 60px #000b;border:1px solid #ffffff30;animation:frame-trend-poster .55s ease both}
+.frame-trending-placeholder{padding:35px;color:#d6cfdf}.frame-trending-placeholder button{border:0;background:var(--frame-accent);padding:9px;border-radius:9px}
+.frame-trending-controls{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.frame-trending-dots{display:flex;gap:7px}.frame-trending-dots button{width:8px;height:8px;border-radius:20px;background:#ffffff4a;border:0;padding:0}.frame-trending-dots button.active{width:29px;background:var(--frame-accent)}
+.frame-trending-arrows{display:flex;gap:9px}.frame-trending-arrows button{background:#19171f;border:1px solid #ffffff20;color:#fff;border-radius:50%;width:38px;height:38px;font-size:18px}
+@keyframes frame-trend-reveal{from{opacity:.35;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes frame-trend-poster{from{opacity:.2;transform:rotate(8deg) translateX(20px)}to{opacity:1;transform:rotate(4deg) translateX(0)}}
+@media(min-width:1000px){.frame-trending{margin-left:var(--frame-rail);max-width:none;width:calc(100% - var(--frame-rail));padding-left:clamp(35px,4vw,82px);padding-right:clamp(35px,4vw,82px)}}
+@media(max-width:600px){.frame-theme-picker{margin-right:0;gap:8px}.frame-theme-picker>span{display:none}.frame-theme-picker button{width:19px;height:19px}.top small{display:none}.frame-trending{margin-bottom:32px;padding:0 16px}.frame-trending-source{display:none}.frame-trending-stage{min-height:340px}.frame-trending-body{width:100%;padding:24px;align-self:end;background:linear-gradient(0deg,#0b0a14 0%,transparent)}.frame-trending-body h3{font-size:29px;max-width:80%}.frame-trending-poster{right:7%;top:7%;width:35%;height:47%;transform:rotate(5deg)}.frame-trending-body>button{width:100%}}
+@media(prefers-reduced-motion:reduce){.frame-trending-background,.frame-trending-body,.frame-trending-poster{animation:none!important}}
+</style><script id="frame-trending-themes">
+(function(){
+'use strict';
+const home=document.getElementById('frame-home');if(!home)return;
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const themes={violet:['#b9a2ff','#252035'],ocean:['#6dd9e8','#102c3a'],ember:['#ffb47d','#38221e'],rose:['#ff9cbd','#3b2032']};
+let theme='violet';try{theme=localStorage.getItem('frame_theme_v1')||'violet'}catch{}
+function applyTheme(t){if(!themes[t])return;theme=t;document.documentElement.style.setProperty('--frame-accent',themes[t][0]);document.documentElement.style.setProperty('--frame-theme-glow',themes[t][1]);document.documentElement.dataset.frameTheme=t;try{localStorage.setItem('frame_theme_v1',t)}catch{}document.querySelectorAll('[data-frame-theme]').forEach(b=>{b.classList.toggle('selected',b.dataset.frameTheme===t);b.setAttribute('aria-pressed',String(b.dataset.frameTheme===t))})}
+applyTheme(theme);
+const colors=Object.keys(themes);
+const palette=document.createElement('div');palette.className='frame-theme-picker';palette.innerHTML='<span>MAKE IT YOURS</span><div role="group" aria-label="Color theme">'+colors.map(t=>'<button type="button" data-frame-theme="'+t+'" aria-label="'+t+' theme" title="'+t+' theme" style="--swatch:'+themes[t][0]+'"></button>').join('')+'</div>';
+document.querySelector('.top')?.appendChild(palette);
+palette.addEventListener('click',e=>{const b=e.target.closest('[data-frame-theme]');if(b)applyTheme(b.dataset.frameTheme)});applyTheme(theme);
+const section=document.createElement('section');section.className='frame-trending';section.innerHTML='<div class="frame-trending-heading"><div><span class="frame-section-kicker">WHAT THE WORLD IS WATCHING</span><h2>Trending right now<span class="frame-trending-spark"> ✳</span></h2></div><span class="frame-trending-source">LIVE ANIME PICKS</span></div><div class="frame-trending-stage"><div class="frame-trending-placeholder">Finding the latest anime…</div></div><div class="frame-trending-controls"><div class="frame-trending-dots"></div><div class="frame-trending-arrows"><button data-trend-prev aria-label="Previous trending anime">←</button><button data-trend-next aria-label="Next trending anime">→</button></div></div>';
+home.after(section);
+let list=[],index=0,interval=null;
+function display(){
+if(!list.length)return;
+const a=list[index],image=a.coverImage?.extraLarge||a.coverImage?.large||'',banner=a.bannerImage||image;
+section.querySelector('.frame-trending-stage').innerHTML='<div class="frame-trending-background" style="background-image:linear-gradient(90deg,#0b0b13 0%,#0b0b13e9 32%,#0b0b1350 100%),url(&quot;'+esc(banner)+'&quot;)"></div><div class="frame-trending-body"><span class="frame-trending-rank">#'+String(index+1).padStart(2,'0')+' <span> / TRENDING NOW</span></span><h3>'+esc(a.title?.english||a.title?.romaji||'Anime')+'</h3><p>'+esc([a.format,a.seasonYear,a.episodes?a.episodes+' episodes':null].filter(Boolean).join(' · '))+'</p><button data-trend-search>Explore this anime ↗</button></div><img class="frame-trending-poster" src="'+esc(image)+'" alt="" loading="lazy" referrerpolicy="no-referrer">';
+section.querySelector('.frame-trending-dots').innerHTML=list.map((_,i)=>'<button aria-label="Show trending anime '+(i+1)+'" data-trend-index="'+i+'" class="'+(i===index?'active':'')+'"></button>').join('');
+}
+function change(n){if(!list.length)return;index=(n+list.length)%list.length;display()}
+function start(){clearInterval(interval);if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;interval=setInterval(()=>{if(!document.hidden&&document.body.classList.contains('frame-home-mode'))change(index+1)},6500)}
+section.addEventListener('click',e=>{
+if(e.target.closest('[data-trend-next]')){change(index+1);start()}
+else if(e.target.closest('[data-trend-prev]')){change(index-1);start()}
+else if(e.target.closest('[data-trend-index]')){change(Number(e.target.closest('[data-trend-index]').dataset.trendIndex));start()}
+else if(e.target.closest('[data-trend-search]')){const a=list[index];document.querySelector('.bottom [data-nav="search"]')?.click();const input=document.getElementById('query');if(input){input.value=a.title?.english||a.title?.romaji||'';input.dispatchEvent(new Event('input',{bubbles:true}))}}
+});
+const observer=new MutationObserver(()=>{section.style.display=document.body.classList.contains('frame-home-mode')?'block':'none'});observer.observe(document.body,{attributes:true,attributeFilter:['class']});section.style.display=document.body.classList.contains('frame-home-mode')?'block':'none';
+async function fetchTrending(){
+const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),9000);
+try{
+const query='query { Page(page:1,perPage:7) { media(type:ANIME,sort:TRENDING_DESC,isAdult:false) { id title { english romaji } coverImage { extraLarge large } bannerImage episodes format seasonYear } } }';
+const r=await fetch('https://graphql.anilist.co',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query}),signal:controller.signal});
+if(!r.ok)throw Error('Anime feed unavailable');const json=await r.json();list=(json.data?.Page?.media||[]).filter(a=>a.coverImage?.large);if(!list.length)throw Error('No trending data');
+display();start();
+}catch(e){section.querySelector('.frame-trending-stage').innerHTML='<div class="frame-trending-placeholder">Trending anime is temporarily unavailable. <button data-trend-retry>Try again</button></div>'}
+finally{clearTimeout(timeout)}
+}
+section.addEventListener('click',e=>{if(e.target.closest('[data-trend-retry]'))fetchTrending()});
+fetchTrending();
+})();
+</script></body></html>
