@@ -462,4 +462,41 @@ document.getElementById('saved')?.addEventListener('click',()=>setTimeout(render
 window.addEventListener('storage',render);
 navigate('home');
 })();
+</script><style id="frame-navigation-emergency">
+body.frame-home-mode #frame-home{display:block!important}
+body.frame-home-mode #discover,body.frame-home-mode #library{display:none!important}
+body.frame-discover-mode #frame-home,body.frame-discover-mode #library{display:none!important}
+body.frame-library-mode #frame-home,body.frame-library-mode #discover{display:none!important}
+body.frame-discover-mode #discover,body.frame-library-mode #library{display:block!important}
+body.frame-discover-mode .hero,body.frame-discover-mode .tabs,body.frame-discover-mode .search,body.frame-library-mode .tabs{display:block}
+body.frame-library-mode .hero,body.frame-library-mode .search{display:none!important}
+</style>
+<script id="frame-navigation-emergency">
+(function(){
+const nav=document.querySelector('.bottom'),home=document.getElementById('frame-home'),discover=document.getElementById('discover'),library=document.getElementById('library');
+if(!nav||!home||!discover||!library)return;
+function activate(section){
+const isHome=section==='home',isLibrary=section==='library';
+document.body.classList.toggle('frame-home-mode',isHome);
+document.body.classList.toggle('frame-library-mode',isLibrary);
+document.body.classList.toggle('frame-discover-mode',!isHome&&!isLibrary);
+home.style.display=isHome?'block':'none';
+discover.classList.toggle('hidden',isHome||isLibrary);
+library.classList.toggle('hidden',!isLibrary);
+nav.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('on',b.dataset.nav===section));
+if(isLibrary)document.getElementById('filter')?.dispatchEvent(new Event('change'));
+if(section==='search'){document.getElementById('query')?.focus()}
+if(section==='discover'&&!document.getElementById('results')?.children.length){
+const retry=document.getElementById('retry');
+if(retry)retry.click();
+else document.querySelector('.tabs [data-view="discover"]')?.click();
+}
+window.scrollTo(0,0);
+}
+nav.addEventListener('click',function(e){
+const button=e.target.closest('[data-nav]');if(!button)return;
+e.preventDefault();e.stopImmediatePropagation();activate(button.dataset.nav);
+},true);
+window.addEventListener('pageshow',function(){if(!document.body.classList.contains('frame-home-mode')&&!document.body.classList.contains('frame-library-mode'))activate('discover')});
+})();
 </script></body></html>
