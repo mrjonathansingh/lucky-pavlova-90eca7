@@ -168,35 +168,68 @@ if(!seasons.length)throw Error('No season information found');
 const root=seasons[0];$('detail-body').querySelector('.detail-head h2').textContent=root.title.english||root.title.romaji||title;
 if(root.description)$('synopsis').textContent=cleanTitle(root.description);
 $('season-list').className='season-list';$('season-list').innerHTML=seasons.map((m,i)=>'<button class="season-choice" data-season="'+m.id+'">'+(m.coverImage?.large?'<img loading="lazy" src="'+esc(m.coverImage.large)+'" alt="">':'')+'<span><strong>'+(seasons.length>1?'Season '+(i+1)+' · ':'')+esc(m.title.english||m.title.romaji)+'</strong><small>'+esc(m.seasonYear||m.startDate?.year||'Year unknown')+' · '+esc(m.episodes??'?')+' episodes</small></span></button>').join('');
+let seasonGuideRequest=0;
 const selectSeason=async(m)=>{
+const request=++seasonGuideRequest;
 if(generation!==detailGeneration)return;
+const alive=()=>generation===detailGeneration&&request===seasonGuideRequest&&!$('details').classList.contains('hidden');
 document.querySelectorAll('#season-list .season-choice').forEach(b=>b.classList.toggle('selected',Number(b.dataset.season)===m.id));
 $('episode-heading').textContent=(m.title.english||m.title.romaji)+' · Episodes';
-$('episode-guide').innerHTML='<div class="season-loading">Loading episodes…</div>';
 if(m.description)$('synopsis').textContent=cleanTitle(m.description);
-let episodes=[];
-const count=Number(m.episodes)||0;
-const known=Math.max(1,Math.min(count||25,50));
+const count=Number(m.episodes)||0,limit=Math.min(count||25,50);
 const poster=m.coverImage?.large||m.coverImage?.extraLarge||'';
 const cacheKey=m.idMal?String(m.idMal):'ani-'+m.id;
+let episodes=[];
 try{
 const cached=JSON.parse(localStorage.getItem('frame_episode_titles_v1')||'{}')[cacheKey];
-if(cached?.episodes?.length)episodes=cached.episodes.slice(0,50).map(ep=>({number:ep.n,title:ep.title||'',description:'',filler:ep.filler,still:ep.still||''}));
+if(cached?.episodes?.length)episodes=cached.episodes.filter(ep=>ep.n<=50).map(ep=>({number:ep.n,title:ep.title||'',description:ep.description||'',filler:ep.filler,still:ep.still||''}));
 }catch{}
-if(!episodes.length&&m.streamingEpisodes?.length)episodes=m.streamingEpisodes.slice(0,50).map((ep,i)=>({number:i+1,title:ep.title||'',description:'',url:ep.url}));
-if(!episodes.length)episodes=Array.from({length:known},(_,i)=>({number:i+1,title:'Episode '+(i+1),description:''}));
-if(generation!==detailGeneration)return;
-if(m.idMal&&!episodes.some(ep=>ep.title&&ep.title!=='Episode '+ep.number)){
-const c=new AbortController(),t=setTimeout(()=>c.abort(),4500);
-fetch('https://api.tenrai.org/v1/anime/'+m.idMal+'/episodes?page=1',{signal:c.signal})
-.then(r=>r.ok?r.json():null).then(j=>{
-if(generation!==detailGeneration||!j?.data?.length)return;
-const guide=document.getElementById('episode-guide');if(!guide)return;
-const rows=j.data.slice(0,50).map(ep=>({number:Number(ep.mal_id),title:ep.title||'',description:ep.synopsis||'',filler:ep.filler}));
-guide.innerHTML='<p class="section-note">Episode titles from the anime catalog.</p><div class="episode-list">'+rows.map(ep=>'<div class="episode-item"><strong>Episode '+esc(ep.number)+' · '+esc(ep.title||'Untitled')+'</strong></div>').join('')+'</div>';
-}).catch(()=>{}).finally(()=>clearTimeout(t));
+if(!episodes.length&&m.streamingEpisodes?.length)episodes=m.streamingEpisodes.slice(0,50).map((ep,i)=>({number:i+1,title:ep.title||'',url:ep.url,description:''}));
+if(!episodes.length)episodes=Array.from({length:limit},(_,i)=>({number:i+1,title:'',description:''}));
+const guide=$('episode-guide');
+function draw(note){
+if(!alive())return;
+guide.innerHTML='<p class="section-note">'+esc(note)+'</p><div class="frame-guide-episode-list">'+episodes.map(ep=>{
+const n=Number(ep.number),image=ep.still||poster,description=cleanTitle(ep.description||'');
+return '<article class="frame-guide-episode"><div class="frame-guide-episode-image">'+(image?'<img src="'+esc(image)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':'<span>'+n+'</span>')+'</div><div class="frame-guide-episode-content"><small>EPISODE '+n+(ep.filler?' · FILLER':'')+'</small><h4>'+esc(ep.title&&ep.title!=='Episode '+n?ep.title:'Episode '+n)+'</h4>'+(description?'<p>'+esc(description)+'</p>':'')+(ep.url?'<a href="'+esc(ep.url)+'" target="_blank" rel="noopener noreferrer">Episode source ↗</a>':'')+(m.idMal?'<button type="button" data-guide-detail="'+n+'">Show episode details ↗</button>':'<span class="frame-guide-no-details">Detailed summaries not supplied by this catalog</span>')+'<div class="frame-guide-detail" data-guide-slot="'+n+'"></div></div></article>';
+}).join('')+'</div>';
 }
-$('episode-guide').innerHTML=(episodes.length?'<p class="section-note">Episode summaries appear when the catalog provides them. Unavailable descriptions are not invented.</p><div class="episode-list">'+episodes.map(ep=>'<div class="episode-item"><strong>Episode '+esc(ep.number)+(ep.title&&ep.title!=='Episode '+ep.number?' · '+esc(ep.title):'')+'</strong>'+(ep.description?'<p>'+esc(cleanTitle(ep.description))+'</p>':'<p>Episode description not available.</p>')+(ep.filler?'<p>Filler episode</p>':'')+(ep.url?'<p><a target="_blank" rel="noopener noreferrer" href="'+esc(ep.url)+'">Episode source</a></p>':'')+'</div>').join('')+'</div>':'<p class="section-note">Episode names are not currently available. You can still browse the numbered episodes.</p>');
+draw('Showing available episode information. Select an episode to request its full details.');
+if(m.idMal){
+const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),5000);
+try{
+let response=await fetch('https://api.tenrai.org/v1/anime/'+m.idMal+'/episodes?page=1',{signal:controller.signal});
+if(!response.ok)throw Error('Episode index unavailable');
+let json=await response.json();
+if(!alive())return;
+if(Array.isArray(json.data)&&json.data.length){
+const previous=new Map(episodes.map(ep=>[ep.number,ep]));
+episodes=json.data.slice(0,50).map(x=>({number:Number(x.mal_id),title:x.title||previous.get(Number(x.mal_id))?.title||'',description:x.synopsis||'',still:x.images?.jpg?.image_url||x.images?.webp?.image_url||'',filler:x.filler,url:previous.get(Number(x.mal_id))?.url||''}));
+draw('Official episode titles loaded. Tap “Show episode details” for a full summary when available.');
+}
+}catch{}finally{clearTimeout(timeout)}
+}
+guide.onclick=async e=>{
+const btn=e.target.closest('[data-guide-detail]');if(!btn||!alive())return;
+const n=Number(btn.dataset.guideDetail),slot=guide.querySelector('[data-guide-slot="'+n+'"]');
+if(!slot||btn.disabled)return;
+btn.disabled=true;btn.textContent='Loading details…';
+const c=new AbortController(),t=setTimeout(()=>c.abort(),6500);
+try{
+let data=null;
+for(const base of ['https://api.tenrai.org/v1','https://api.jikan.moe/v4']){
+try{
+const r=await fetch(base+'/anime/'+m.idMal+'/episodes/'+n,{signal:c.signal});
+if(r.ok){const j=await r.json();if(j.data){data=j.data;break}}
+}catch(e){if(c.signal.aborted)break}
+}
+if(!alive())return;
+const synopsis=cleanTitle(data?.synopsis||'');
+slot.innerHTML=synopsis?'<p>'+esc(synopsis)+'</p>':'<p>There is no verified episode summary available from the connected catalogs.</p>';
+if(data?.title){const title=btn.closest('.frame-guide-episode')?.querySelector('h4');if(title)title.textContent=data.title}
+}catch{if(alive())slot.textContent='Episode details could not be loaded right now.'}
+finally{clearTimeout(t);if(alive()){btn.textContent='Refresh details ↻';btn.disabled=false}}
+};
 };
 $('season-list').addEventListener('click',e=>{const b=e.target.closest('[data-season]');if(b){const m=seasons.find(x=>x.id===Number(b.dataset.season));if(m)selectSeason(m)}});
 await selectSeason(seasons.find(m=>m.id===aniId)||root);
@@ -964,4 +997,18 @@ state.observe(more,{childList:true,attributes:true,attributeFilter:['disabled','
 more.addEventListener('click',e=>{if(e.isTrusted)failed=false},true);
 window.addEventListener('unhandledrejection',()=>{},false);
 })();
-</script><style id="frame-infinite-discover-style">#more.more{font-size:12px;border:1px solid #ffffff22;background:#1b1924;color:#c9c3d5;padding:13px 24px;border-radius:14px}#more.more:disabled{opacity:.65}</style></body></html>
+</script><style id="frame-infinite-discover-style">#more.more{font-size:12px;border:1px solid #ffffff22;background:#1b1924;color:#c9c3d5;padding:13px 24px;border-radius:14px}#more.more:disabled{opacity:.65}</style><style id="frame-guide-episode-cards">
+.frame-guide-episode-list{display:grid;gap:12px;margin:14px 0 25px}
+.frame-guide-episode{display:flex;gap:15px;padding:13px;border:1px solid #ffffff16;border-radius:15px;background:#16151e}
+.frame-guide-episode-image{width:125px;height:90px;flex:none;background:#27232f;border-radius:10px;overflow:hidden;display:grid;place-items:center}
+.frame-guide-episode-image img{width:100%;height:100%;object-fit:cover}
+.frame-guide-episode-content{min-width:0;flex:1}
+.frame-guide-episode-content small{font-size:9px;letter-spacing:1.4px;color:var(--frame-accent);font-weight:800}
+.frame-guide-episode-content h4{margin:6px 0;font-size:15px;line-height:1.3}
+.frame-guide-episode-content p{color:#bbb5c7;font-size:12px;line-height:1.55}
+.frame-guide-episode-content button{border:1px solid #ffffff25;background:#25202e;color:#e6dbff;padding:8px 11px;border-radius:9px;font-size:11px;margin-top:8px}
+.frame-guide-episode-content a{display:inline-block;color:var(--frame-accent);font-size:11px;margin:6px 10px 0 0}
+.frame-guide-no-details{font-size:11px;color:#9991a4}
+.frame-guide-detail p{margin:10px 0 0}
+@media(max-width:600px){.frame-guide-episode{gap:10px;padding:10px}.frame-guide-episode-image{width:90px;height:75px}.frame-guide-episode-content h4{font-size:13px}}
+</style></body></html>
