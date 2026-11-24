@@ -297,7 +297,7 @@ const path=url.replace(/^https:\/\/api\.jikan\.moe\/v4/,'');
 const candidates=path!==url?['https://api.tenrai.org/v1'+path,url]:[url];
 let issues=[];
 for(const endpoint of candidates){
-const c=new AbortController(),timeout=setTimeout(()=>c.abort(),8500);
+const c=new AbortController(),timeout=setTimeout(()=>c.abort(),4300);
 try{
 const r=await fetch(endpoint,{signal:c.signal,cache:'no-store'});
 if(r.ok){
@@ -370,7 +370,7 @@ const go=async(n)=>{
 if(loadingPage||!stillHere())return;
 n=Math.max(1,Math.floor(Number(n)||1));if(total)n=Math.min(n,total);
 start=Math.floor((n-1)/50)*50+1;episodePageBySeason.set(cacheKey,start);loadingPage=true;
-target.innerHTML='<p class="frame-episode-loading">Loading episodes '+start+'–'+(start+49)+'…</p>';
+render();target.insertAdjacentHTML('beforeend','<p class="frame-episode-loading">Fetching episode titles '+start+'–'+(start+49)+'…</p>');
 failed=!(await fetchPage(Math.floor((start-1)/100)+1));
 loadingPage=false;render();
 };
@@ -380,8 +380,20 @@ target.querySelector('[data-episode-next]')?.addEventListener('click',()=>go(sta
 target.querySelector('[data-episode-prev]')?.addEventListener('click',()=>go(start-50));
 target.querySelector('[data-retry-episodes]')?.addEventListener('click',()=>{episodeCache.delete(cacheKey);loadSeriesEpisodes()});
 }
-if(map.size||total)render();
-else target.innerHTML='<p class="frame-episode-loading">Loading episode information…</p>';
+render();
+if(!map.size)target.insertAdjacentHTML('beforeend','<p class="frame-episode-loading" data-episode-fetch-status>Fetching official episode names in the background…</p>');
+if(!total){
+(async()=>{
+try{
+const query=String(a.id).startsWith('ani-')?'query($id:Int){Media(id:$id,type:ANIME){episodes idMal}}':'query($idMal:Int){Media(idMal:$idMal,type:ANIME){episodes idMal}}';
+const vars=String(a.id).startsWith('ani-')?{id:Number(String(a.id).slice(4))}:{idMal:Number(a.id)};
+const d=await aniQuery(query,vars);if(!stillHere())return;
+const m=d?.Media;if(Number(m?.episodes)>0){updateTotal(Number(m.episodes));persist();render()}
+if(!malId&&Number(m?.idMal)>0){malId=Number(m.idMal);persist()}
+}catch{}
+})();
+}
+
 if(!malId){
 try{const d=await aniSeason(Number(String(a.id).slice(4)));if(!stillHere())return;malId=d?.idMal||null;updateTotal(Number(d?.episodes)||0)}catch{}
 }
@@ -396,11 +408,7 @@ if(match){malId=Number(match.mal_id)||null;updateTotal(Number(match.episodes)||0
 }
 if(!stillHere())return;
 if(malId&&!map.has(start)){failed=!(await fetchPage(Math.floor((start-1)/100)+1))}
-if(!total&&malId){
-const detail=await jikanJSON('https://api.jikan.moe/v4/anime/'+malId+'/full');
-if(!stillHere())return;
-updateTotal(Number(detail?.data?.episodes)||0);
-}
+
 if(!stillHere())return;
 // Never present the watched count as the official episode total.
 if(map.size||total)persist();
