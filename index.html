@@ -267,7 +267,7 @@ function renderSeries(){
 const items=sortedGroup(),selected=items.find(x=>String(x.id)===activeSeasonId)||items[0];if(!selected)return;
 activeSeasonId=String(selected.id);
 const name=selected.seriesName||base(selected.title)||selected.title,watched=Math.max(0,Number(selected.watched)||0),total=Number(selected.total)||0,pct=total?Math.min(100,Math.round(watched/total*100)):0;
-el('detail-body').innerHTML='<div class="frame-series-header"><div class="frame-kicker">FRAME / MY LIST</div><h2>'+safe(name)+'</h2><p>'+items.length+' saved '+(items.length===1?'season':'seasons')+'</p></div>'+
+el('detail-body').innerHTML='<div class="frame-series-header frame-series-cinematic"><div class="frame-series-art">'+(selected.poster?'<img src="'+safe(selected.poster)+'" alt="" referrerpolicy="no-referrer">':'')+'</div><div class="frame-series-overlay"></div><div class="frame-series-content"><div class="frame-kicker">FRAME ORIGINAL TRACKER / YOUR LIBRARY</div><h2>'+safe(name)+'</h2><p>'+items.length+' saved '+(items.length===1?'season':'seasons')+' <span class="frame-series-separator">·</span> '+watched+' episodes watched</p><div class="frame-series-hero-meter"><span style="width:'+pct+'%"></span></div><div class="frame-series-hero-footer"><span>SEASON '+(items.indexOf(selected)+1)+' IN PROGRESS</span><strong>'+pct+'%</strong></div></div></div>'+
 '<div class="frame-season-strip">'+items.map((x,i)=>'<button class="frame-season-tile '+(String(x.id)===activeSeasonId?'active':'')+'" data-select-season="'+safe(x.id)+'">'+(x.poster?'<img src="'+safe(x.poster)+'" loading="lazy" alt="">':'<div class="frame-no-poster"></div>')+'<strong>Season '+(i+1)+'</strong><small>'+(x.total==null?'Count pending':safe(x.total)+' episodes')+'</small></button>').join('')+'</div>'+
 '<div class="frame-series-tabs"><button class="active" data-series-tab="episodes">▷ Episodes</button><button data-series-tab="details">Season details</button></div>'+
 '<div class="frame-progress-head"><h3>Season progress</h3><span>'+pct+'%</span></div><div class="frame-progress-bar"><div style="width:'+pct+'%"></div></div>'+
@@ -885,4 +885,29 @@ body.frame-home-mode .frame-trending{display:block!important}
 @media(min-width:1500px){.frame-trending-shelf{grid-template-columns:repeat(7,minmax(0,1fr))}.frame-trending-mini-copy strong{font-size:10px}}
 @media(max-width:999px){.frame-trending-shelf{display:flex;overflow-x:auto;scrollbar-width:none;padding-bottom:6px}.frame-trending-mini{min-width:155px;width:155px;flex:none}}
 @media(max-width:600px){.frame-trending-stage{min-height:355px!important}.frame-trending-body{width:100%!important}.frame-trending-body h3{font-size:28px!important;max-width:84%}.frame-trending-poster{width:34%!important;height:42%!important;right:7%!important;top:7%!important}.frame-trending-mini{min-width:145px;width:145px}.frame-home-intro{margin-top:15px!important}}
+</style><style id="frame-series-cinematic-v2">
+.details{background:#08090efb!important}
+.details-inner{max-width:760px}
+.frame-series-cinematic{position:relative;isolation:isolate;min-height:280px;display:flex;align-items:end;overflow:hidden;border-radius:21px!important;background:#1b1624;border:1px solid #ffffff19;margin-bottom:14px}
+.frame-series-art{position:absolute;inset:0;z-index:-2}
+.frame-series-art img{width:100%;height:100%;object-fit:cover;object-position:center 35%;filter:saturate(.95)}
+.frame-series-overlay{position:absolute;inset:0;z-index:-1;background:linear-gradient(0deg,#0c0a12 2%,#0c0a12ee 27%,#0c0a1255 100%),linear-gradient(90deg,#0b09118c,transparent)}
+.frame-series-content{width:100%;padding:30px 28px}
+.frame-series-content .frame-kicker{color:var(--frame-accent);font-size:9px;letter-spacing:1.8px}
+.frame-series-content h2{font-size:clamp(30px,5vw,46px)!important;line-height:1.05!important;letter-spacing:-1.5px!important;max-width:580px;margin:12px 0!important;text-shadow:0 3px 20px #0008}
+.frame-series-content p{color:#e1dbe7!important;font-size:12px!important}
+.frame-series-separator{color:var(--frame-accent);padding:0 5px}
+.frame-series-hero-meter{height:4px;max-width:440px;background:#ffffff36;border-radius:4px;overflow:hidden;margin:22px 0 9px}
+.frame-series-hero-meter span{display:block;height:100%;background:var(--frame-accent)}
+.frame-series-hero-footer{display:flex;justify-content:space-between;max-width:440px;gap:10px;font-size:9px;letter-spacing:1.3px;color:#d1c8d8;font-weight:750}
+.frame-series-hero-footer strong{color:var(--frame-accent);font-size:12px}
+.frame-season-strip{padding:13px 0 24px!important}
+.frame-season-tile{transition:opacity .15s,transform .15s}.frame-season-tile.active{transform:translateY(-2px)}
+.frame-season-tile.active img{border-color:var(--frame-accent)!important}
+.frame-progress-bar>div{background:var(--frame-accent)!important}
+.frame-episode{position:relative}
+.frame-episode .frame-episode-thumb{display:flex!important;overflow:hidden!important;flex:none!important}
+.frame-episode .frame-episode-thumb img{width:100%!important;height:100%!important;object-fit:cover!important}
+@media(min-width:1000px){.details-inner{max-width:1000px}.frame-series-cinematic{min-height:360px}.frame-series-content{padding:46px}}
+@media(max-width:600px){.frame-series-cinematic{min-height:260px;border-radius:17px!important}.frame-series-content{padding:23px 20px}.frame-series-content h2{font-size:32px!important}}
 </style></body></html>
