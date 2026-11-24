@@ -276,6 +276,7 @@ el('detail-body').innerHTML='<div class="frame-series-header"><div class="frame-
 '<div id="frame-season-description" hidden><h3>About this season</h3><p>'+safe(selected.synopsis||'No official description available for this season.')+'</p></div><div class="frame-episode-title"><h3>Episodes</h3><span>'+safe(selected.title)+'</span></div><div id="frame-episode-results" class="frame-episode-results"><p class="frame-episode-loading">Loading episode titles…</p></div>';
 }
 const episodeCache=new Map();
+const episodePageBySeason=new Map();
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function jikanJSON(url){
 for(let attempt=0;attempt<2;attempt++){
@@ -296,7 +297,8 @@ if(!a||!target)return;
 const cacheKey=String(a.id),cached=episodeCache.get(cacheKey);
 let total=Number(a.total)||cached?.total||0,malId=String(a.id).startsWith('ani-')?(cached?.malId||null):Number(a.id);
 const map=new Map((cached?.episodes||[]).map(x=>[x.n,x]));
-let start=1,loadingPage=false,failed=false;
+let start=episodePageBySeason.get(cacheKey)||1,loadingPage=false,failed=false;
+if(total&&start>total)start=Math.floor((total-1)/50)*50+1;
 function stillHere(){return req===seriesRequest&&el('frame-episode-results')===target}
 function persist(){episodeCache.set(cacheKey,{episodes:[...map.values()],total,malId})}
 function updateTotal(n){
@@ -335,7 +337,7 @@ target.innerHTML=html;
 const go=async(n)=>{
 if(loadingPage||!stillHere())return;
 n=Math.max(1,Math.floor(Number(n)||1));if(total)n=Math.min(n,total);
-start=Math.floor((n-1)/50)*50+1;loadingPage=true;
+start=Math.floor((n-1)/50)*50+1;episodePageBySeason.set(cacheKey,start);loadingPage=true;
 target.innerHTML='<p class="frame-episode-loading">Loading episodes '+start+'–'+(start+49)+'…</p>';
 failed=!(await fetchPage(Math.floor((start-1)/100)+1));
 loadingPage=false;render();
@@ -352,7 +354,7 @@ if(!malId){
 try{const d=await aniSeason(Number(String(a.id).slice(4)));if(!stillHere())return;malId=d?.idMal||null;updateTotal(Number(d?.episodes)||0)}catch{}
 }
 if(!stillHere())return;
-if(malId&&!map.size){failed=!(await fetchPage(1))}
+if(malId&&!map.has(start)){failed=!(await fetchPage(Math.floor((start-1)/100)+1))}
 if(!stillHere())return;
 if(map.size||total)persist();
 render();
