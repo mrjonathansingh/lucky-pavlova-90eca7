@@ -465,40 +465,40 @@ async function loadSeriesEpisodes(){
 const req=++seriesRequest,id=activeSeasonId,items=sortedGroup(),a=items.find(x=>String(x.id)===id),target=el('frame-episode-results');
 if(!a||!target)return;
 const cacheKey=String(a.id),cached=episodeCache.get(cacheKey);
-let total=Number(a.total)||cached?.total||0,malId=String(a.id).startsWith('ani-')?(cached?.malId||null):Number(a.id);
+let total=Number(a.total)||cached?.total||0,verifiedTotal=0,malId=String(a.id).startsWith('ani-')?(cached?.malId||null):Number(a.id);
 const map=new Map((cached?.episodes||[]).filter(x=>!total||Number(x.n)<=total).map(x=>[x.n,x]));
 let start=episodePageBySeason.get(cacheKey)||1,loadingPage=false,failed=false,issue='';
-const minimumTrackable=Math.max(1,Number(a.watched||0)+1);
+const minimumTrackable=1; // Watched progress is not evidence that more episodes exist.
 if(total&&start>total)start=Math.floor((total-1)/50)*50+1;
 function stillHere(){return req===seriesRequest&&el('frame-episode-results')===target}
 function persist(){episodeCache.set(cacheKey,{episodes:[...map.values()],total,malId});saveEpisodeTitles()}
 function updateTotal(n){
 if(!n||n<=0)return;
-if(Number(a.total)>0){total=Number(a.total);return}total=n;if(a.total!==n){a.total=n;save();const count=el('detail-body')?.querySelector('.frame-season-tile.active small');if(count)count.textContent=n+' episodes'}
+if(verifiedTotal>0){total=verifiedTotal;return}if(Number(a.total)>0){total=Number(a.total);return}total=n;if(a.total!==n){a.total=n;save();const count=el('detail-body')?.querySelector('.frame-season-tile.active small');if(count)count.textContent=n+' episodes'}
 }
 async function fetchPage(page){
 if(!malId)return false;
 const first=(page-1)*100+1;
-if(map.has(first))return true;
+if(map.has(first)&&verifiedTotal>0)return true;
 const endpoint='https://api.jikan.moe/v4/anime/'+malId+'/episodes?page='+page;
 const j=await jikanJSON(endpoint);
 issue=episodeDiagnostics.get(endpoint)||'';
 if(!stillHere())return false;
 if(!j?.data?.length)return false;
 for(const x of j.data){
-const n=Number(x.mal_id);if(n>0&&(!total||n<=total))map.set(n,{n,title:x.title||x.title_japanese||'',filler:!!x.filler,still:x.images?.jpg?.large_image_url||x.images?.jpg?.image_url||x.images?.webp?.image_url||x.image_url||x.screenshot||''});
+const n=Number(x.mal_id);if(n>0)map.set(n,{n,title:x.title||x.title_japanese||'',filler:!!x.filler,still:x.images?.jpg?.large_image_url||x.images?.jpg?.image_url||x.images?.webp?.image_url||x.image_url||x.screenshot||''});
 }
-updateTotal(Number(j.pagination?.items?.total)||0);
+const officialCount=Number(j.pagination?.items?.total)||0;if(officialCount>0){verifiedTotal=officialCount;total=officialCount;for(const key of map.keys())if(key>total)map.delete(key)}
 persist();return true;
 }
 function render(){
 if(!stillHere())return;
 const last=Math.min(start+49,total||Math.max(...map.keys(),0),99999);
-const displayLast=total>0?Math.min(start+49,total):Math.max(last,Math.min(start+49,Math.max(minimumTrackable,start)));
+const displayLast=Math.min(start+49,verifiedTotal||Math.max(...map.keys(),0));
 const hasAny=displayLast>=start;
 let html='<div class="frame-episode-pager"><label>Go to episode <input type="number" min="1" max="'+(total||99999)+'" value="'+start+'" inputmode="numeric" data-episode-page-input></label><button type="button" data-episode-page-go>Go</button></div>';
 if(!hasAny){
-html+='<p class="frame-episode-loading">Episode data could not be loaded'+(issue?' ('+safe(issue)+')':'')+'. Your tracking remains available below.</p><button class="frame-load-episodes" data-retry-episodes>Retry titles</button>';
+html+='<p class="frame-episode-loading">Episode count is not verified yet. FRAME will not invent episode cards. Episode data could not be loaded'+(issue?' ('+safe(issue)+')':'')+'. Your tracking remains available below.</p><button class="frame-load-episodes" data-retry-episodes>Retry titles</button>';
 }else{
 html+=Array.from({length:displayLast-start+1},(_,i)=>{
 const n=start+i,ep=map.get(n),done=n<=Number(a.watched||0),title=ep?.title&&ep.title.toLowerCase()!=='episode '+n?ep.title:'Episode '+n;
@@ -513,7 +513,7 @@ if(failed)html+='<p class="frame-episode-loading">Episode titles unavailable'+(i
 target.innerHTML=html;
 const go=async(n)=>{
 if(loadingPage||!stillHere())return;
-n=Math.max(1,Math.floor(Number(n)||1));if(total)n=Math.min(n,total);
+n=Math.max(1,Math.floor(Number(n)||1));if(verifiedTotal)n=Math.min(n,verifiedTotal);
 start=Math.floor((n-1)/50)*50+1;episodePageBySeason.set(cacheKey,start);loadingPage=true;
 render();target.insertAdjacentHTML('beforeend','<p class="frame-episode-loading">Fetching episode titles '+start+'–'+(start+49)+'…</p>');
 failed=!(await fetchPage(Math.floor((start-1)/100)+1));
@@ -552,7 +552,7 @@ if(match){malId=Number(match.mal_id)||null;updateTotal(Number(match.episodes)||0
 }catch{}
 }
 if(!stillHere())return;
-if(malId&&!map.has(start)){failed=!(await fetchPage(Math.floor((start-1)/100)+1))}
+if(malId){failed=!(await fetchPage(Math.floor((start-1)/100)+1))}
 
 if(!stillHere())return;
 // Never present the watched count as the official episode total.
