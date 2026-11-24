@@ -1111,7 +1111,7 @@ window.addEventListener('unhandledrejection',()=>{},false);
 <script id="frame-tmdb-global-js">
 (function(){
 const button=document.getElementById('frame-tmdb-global');
-const refresh=()=>{button.textContent=FRAME_TMDB_WORKER?'🎬 TMDB AUTO ✓':localStorage.getItem('frame_tmdb_key')?'🎬 TMDB ✓':'🎬 SET UP TMDB'};
+const refresh=()=>{button.textContent='🎬 TMDB AUTO ✓'};
 button.addEventListener('click',()=>{
 const current=localStorage.getItem('frame_tmdb_proxy')||'';
 const proxy=window.prompt('Cloudflare Worker URL (leave empty to use a personal TMDB key instead):',current);
@@ -1130,4 +1130,83 @@ localStorage.setItem('frame_tmdb_key',key.trim());refresh();
 });
 refresh();
 })();
-</script><style id="frame-tmdb-choice-style">.frame-tmdb-choice{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}.frame-tmdb-choice select{background:#252132;color:#fff;border:1px solid #6f6388;border-radius:8px;padding:9px;max-width:100%}#frame-tmdb-status{font-size:12px!important;color:#b9a4e9!important}</style></body></html>
+</script><style id="frame-tmdb-choice-style">.frame-tmdb-choice{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}.frame-tmdb-choice select{background:#252132;color:#fff;border:1px solid #6f6388;border-radius:8px;padding:9px;max-width:100%}#frame-tmdb-status{font-size:12px!important;color:#b9a4e9!important}</style><style id="frame-library-command-css">
+#frame-library-command{margin:4px 0 22px;display:grid;gap:14px}
+.frame-command-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.frame-command-stat{background:#191821;border:1px solid #ffffff16;border-radius:14px;padding:13px 9px;text-align:center}
+.frame-command-stat strong{display:block;font-size:23px;color:#e9ddff}.frame-command-stat span{font-size:10px;color:#a7a0b4}
+.frame-command-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.frame-command-controls select,.frame-command-controls button,.frame-upcoming button{background:#252130;border:1px solid #4b415f;border-radius:10px;color:#eee;padding:10px;font-size:12px}
+.frame-command-panel{background:#15141c;border:1px solid #ffffff18;border-radius:15px;padding:14px}
+.frame-command-panel h3{margin:0 0 9px;font-size:15px}.frame-command-panel p{font-size:12px;color:#aaa4b7;line-height:1.5}
+.frame-command-item{display:flex;align-items:center;gap:11px;margin:10px 0;font-size:12px}
+.frame-command-item img{width:40px;height:55px;object-fit:cover;border-radius:7px}
+.frame-command-item div{flex:1;min-width:0}.frame-command-item strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.frame-command-item small{color:#a8a1b4}.frame-command-item button{border:1px solid #5a4a74;background:#30263d;color:#eee;border-radius:8px;padding:8px}
+.frame-command-upcoming{display:grid;gap:8px}.frame-command-upcoming article{background:#211c2c;border-radius:10px;padding:10px;font-size:12px}
+.frame-command-upcoming small{display:block;color:#b6a8c8;margin-top:4px}
+@media(max-width:600px){.frame-command-controls select{flex:1;min-width:120px}.frame-command-item button{font-size:11px}}
+</style>
+<script id="frame-library-command-js">
+(function(){
+'use strict';
+const KEY='frame_fresh_library_v1',CACHE='frame_upcoming_sequels_v1';
+const lib=document.getElementById('library'),saved=document.getElementById('saved');
+if(!lib||!saved)return;
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\x27':'&#39;'}[c]));
+const read=()=>{try{const x=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(x)?x:[]}catch{return []}};
+const root=document.createElement('div');root.id='frame-library-command';
+root.innerHTML='<div class="frame-command-stats" id="frame-command-stats"></div><div class="frame-command-controls"><select id="frame-command-sort" aria-label="Sort saved anime"><option value="recent">Recently saved</option><option value="title">Title A–Z</option><option value="progress">Most progress</option><option value="remaining">Most episodes left</option></select><select id="frame-command-group" aria-label="Organize saved anime"><option value="flat">All saved titles</option><option value="franchise">Group by franchise</option></select></div><section class="frame-command-panel"><h3>▶ Continue watching</h3><div id="frame-command-continue"></div></section><section class="frame-command-panel frame-upcoming"><h3>✦ Upcoming seasons for you</h3><p>Check sequel announcements for anime in your library. Only confirmed catalog data will be shown; release dates may be unknown.</p><button id="frame-check-sequels" type="button">Check my saved anime</button><div class="frame-command-upcoming" id="frame-command-upcoming"></div></section>';
+lib.insertBefore(root,saved);
+const stats=root.querySelector('#frame-command-stats'),cont=root.querySelector('#frame-command-continue'),up=root.querySelector('#frame-command-upcoming');
+const sort=root.querySelector('#frame-command-sort'),group=root.querySelector('#frame-command-group');
+const base=x=>String(x||'').replace(/\s*[:\-–]?\s*(?:season|series|part)\s*\d+.*$/i,'').replace(/\s+(?:II|III|IV|V|VI)$/i,'').replace(/\s*\(\d{4}\)\s*$/,'').trim().toLowerCase();
+const name=a=>a.title||a.title_english||'Untitled';
+const remaining=a=>Math.max(0,(Number(a.total)||0)-(Number(a.watched)||0));
+const poster=a=>a.poster||a.images?.webp?.large_image_url||a.images?.jpg?.image_url||'';
+const stat=(n,t)=>'<div class="frame-command-stat"><strong>'+n+'</strong><span>'+t+'</span></div>';
+function update(){
+if(lib.classList.contains('hidden'))return;
+const items=read(),watching=items.filter(a=>a.status==='Watching'),completed=items.filter(a=>a.status==='Completed');
+stats.innerHTML=stat(items.length,'Saved')+stat(watching.length,'Watching')+stat(completed.length,'Completed');
+const active=watching.filter(a=>remaining(a)>0||!Number(a.total)).sort((a,b)=>(Number(b.watched)||0)-(Number(a.watched)||0)).slice(0,4);
+cont.innerHTML=active.length?active.map(a=>'<div class="frame-command-item">'+(poster(a)?'<img src="'+esc(poster(a))+'" alt="">':'')+'<div><strong>'+esc(name(a))+'</strong><small>Watched '+(Number(a.watched)||0)+(Number(a.total)?' / '+Number(a.total):'')+' · Next episode '+((Number(a.watched)||0)+1)+'</small></div><button data-resume="'+esc(a.id)+'">Open</button></div>').join(''):'<p>Set an anime to Watching to see it here.</p>';
+const cards=[...saved.children].filter(x=>x.nodeType===1);
+const lookup=new Map(items.map((a,i)=>[String(a.id),{a,i}]));
+const getCard=x=>{const b=x.querySelector('[data-id]');if(b&&lookup.has(b.dataset.id))return lookup.get(b.dataset.id);const title=x.querySelector('h3')?.textContent?.trim();return items.map((a,i)=>({a,i})).find(v=>name(v.a)===title)||null};
+const annotated=cards.map((el,i)=>({el,record:getCard(el),i}));
+const method=sort.value;
+annotated.sort((x,y)=>{const a=x.record?.a,b=y.record?.a;if(!a||!b)return x.i-y.i;if(method==='title')return name(a).localeCompare(name(b));if(method==='progress')return (Number(b.watched)||0)-(Number(a.watched)||0);if(method==='remaining')return remaining(b)-remaining(a);return (y.record?.i||0)-(x.record?.i||0)});
+if(group.value==='franchise')annotated.sort((x,y)=>base(x.record?.a?.seriesName||name(x.record?.a)).localeCompare(base(y.record?.a?.seriesName||name(y.record?.a)))||x.i-y.i);
+for(const x of annotated)saved.appendChild(x.el);
+}
+sort.addEventListener('change',update);group.addEventListener('change',update);
+cont.addEventListener('click',e=>{const b=e.target.closest('[data-resume]');if(!b)return;const id=b.dataset.resume;const card=[...saved.children].find(x=>x.querySelector('[data-id="'+CSS.escape(id)+'"]'));if(card){card.scrollIntoView({behavior:'smooth',block:'center'});const click=card.querySelector('.cover,img,h3');if(click)click.click()}else{const original=read().find(a=>String(a.id)===id);if(original){const card=[...saved.children].find(x=>x.textContent.includes(name(original)));card?.scrollIntoView({behavior:'smooth',block:'center'})}}});
+function renderUpcoming(){
+let data={};try{data=JSON.parse(localStorage.getItem(CACHE)||'{}')}catch{}
+const values=Object.values(data).flatMap(x=>Array.isArray(x)?x:[]),unique=[...new Map(values.map(x=>[x.id,x])).values()];
+up.innerHTML=unique.length?unique.map(x=>'<article><strong>'+esc(x.title)+'</strong><small>'+esc(x.status||'Announcement status unknown')+(x.date?' · '+esc(x.date):' · Release date unconfirmed')+'</small></article>').join(''):'<p>No confirmed sequel announcements saved yet. Try the check button.</p>';
+}
+renderUpcoming();
+root.querySelector('#frame-check-sequels').addEventListener('click',async e=>{
+const btn=e.currentTarget;btn.disabled=true;btn.textContent='Checking announcements…';
+const entries=read().filter(a=>/^\d+$/.test(String(a.id))).slice(0,12),cache={};let checked=0;
+for(const a of entries){
+try{
+const r=await fetch('https://api.jikan.moe/v4/anime/'+a.id+'/relations');
+if(!r.ok)throw Error('Catalog unavailable');
+const json=await r.json();
+const sequels=(json.data||[]).filter(x=>/sequel/i.test(x.relation)).flatMap(x=>x.entry||[]).filter(x=>x.type==='anime').map(x=>({id:x.mal_id,title:x.name,status:'Sequel listed · release status not verified'}));
+cache[a.id]=sequels;checked++;
+}catch{}
+await new Promise(resolve=>setTimeout(resolve,430));
+}
+try{localStorage.setItem(CACHE,JSON.stringify(cache))}catch{}
+renderUpcoming();btn.disabled=false;btn.textContent='Check again';if(!checked)up.innerHTML='<p>Anime catalog unavailable right now. Try again later.</p>';
+});
+const observer=new MutationObserver(()=>{if(!lib.classList.contains('hidden')){clearTimeout(observer.timer);observer.timer=setTimeout(update,90)}});
+observer.observe(saved,{childList:true});
+const view=new MutationObserver(()=>{if(!lib.classList.contains('hidden'))update()});view.observe(lib,{attributes:true,attributeFilter:['class']});
+update();
+})();
+</script></body></html>
