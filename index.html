@@ -26,7 +26,7 @@ function setView(v){view=v==='library'?'library':v==='popular'?'popular':v==='cr
 function notice(msg,retry=false){$('notice').classList.remove('hidden');$('notice').innerHTML=esc(msg)+(retry?'<div><button id="retry" type="button">Try again</button></div>':'');$('retry')?.addEventListener('click',()=>query?search(query):load(view))}
 const episodeCountCache=new Map();
 async function fillMissingCounts(items){
-const missing=items.filter(a=>a.episodes==null&&a.total==null);
+const missing=[]; // Defer count enrichment: avoid competing with episode requests.
 let next=0;
 async function worker(){
 while(next<missing.length){
@@ -239,7 +239,7 @@ const sortedGroup=()=>{const g=groups().find(g=>g.key===activeKey);return g?[...
 function openSeries(key){
 const g=groups().find(x=>x.key===key);if(!g)return;activeKey=key;activeSeasonId=String(g.items[0].id);seriesRequest++;
 el('details').classList.remove('hidden');document.body.style.overflow='hidden';
-renderSeries();loadSeriesEpisodes();expandSavedSeries(key);
+renderSeries();loadSeriesEpisodes();
 }
 async function expandSavedSeries(key){
 const group=groups().find(g=>g.key===key);if(!group)return;
@@ -302,6 +302,7 @@ const cacheKey=String(a.id),cached=episodeCache.get(cacheKey);
 let total=Number(a.total)||cached?.total||0,malId=String(a.id).startsWith('ani-')?(cached?.malId||null):Number(a.id);
 const map=new Map((cached?.episodes||[]).map(x=>[x.n,x]));
 let start=episodePageBySeason.get(cacheKey)||1,loadingPage=false,failed=false,issue='';
+const minimumTrackable=Math.max(1,Number(a.watched||0)+1);
 if(total&&start>total)start=Math.floor((total-1)/50)*50+1;
 function stillHere(){return req===seriesRequest&&el('frame-episode-results')===target}
 function persist(){episodeCache.set(cacheKey,{episodes:[...map.values()],total,malId})}
@@ -327,12 +328,13 @@ persist();return true;
 function render(){
 if(!stillHere())return;
 const last=Math.min(start+49,total||Math.max(...map.keys(),0),99999);
-const hasAny=last>=start;
+const displayLast=Math.max(last,Math.min(start+49,Math.max(minimumTrackable,start)));
+const hasAny=displayLast>=start;
 let html='<div class="frame-episode-pager"><label>Go to episode <input type="number" min="1" max="'+(total||99999)+'" value="'+start+'" inputmode="numeric" data-episode-page-input></label><button type="button" data-episode-page-go>Go</button></div>';
 if(!hasAny){
 html+='<p class="frame-episode-loading">Episode data could not be loaded'+(issue?' ('+safe(issue)+')':'')+'. Your tracking remains available below.</p><button class="frame-load-episodes" data-retry-episodes>Retry titles</button>';
 }else{
-html+=Array.from({length:last-start+1},(_,i)=>{
+html+=Array.from({length:displayLast-start+1},(_,i)=>{
 const n=start+i,ep=map.get(n),done=n<=Number(a.watched||0),title=ep?.title&&ep.title.toLowerCase()!=='episode '+n?ep.title:'Episode '+n;
 return '<button class="frame-episode '+(done?'watched':'')+'" data-episode-number="'+n+'"><div class="frame-episode-number">'+String(n).padStart(2,'0')+'</div><div class="frame-episode-copy"><strong>'+safe(title)+'</strong><small>S'+(items.indexOf(a)+1)+' · E'+n+(ep?.filler?' · Filler':'')+'</small></div><span class="frame-episode-check">'+(done?'✓':'○')+'</span></button>';
 }).join('');
@@ -376,7 +378,7 @@ if(!stillHere())return;
 updateTotal(Number(detail?.data?.episodes)||0);
 }
 if(!stillHere())return;
-if(!total&&!map.size&&Number(a.watched)>0)updateTotal(Number(a.watched));
+// Never present the watched count as the official episode total.
 if(map.size||total)persist();
 render();
 }
