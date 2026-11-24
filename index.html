@@ -85,7 +85,7 @@ const oldLoad=load;
 load=async function(mode){page=1;modeForMore=mode;const id=++token;$('title').textContent=mode==='popular'?'Popular anime':mode==='crunchyroll'?'Crunchyroll picks':'Trending anime';$('subtitle').textContent=mode==='crunchyroll'?'Discover favorites · streaming varies by region':mode==='popular'?'All-time favorites':'Currently trending';$('results').innerHTML='';$('more').classList.add('hidden');notice('Loading anime posters…');try{const url='https://api.jikan.moe/v4/top/anime?limit=25&sfw=true';const data=await getAnime(url,mode,null,1);if(id!==token)return;show(data)}catch(e){if(id!==token)return;notice('Anime catalog unavailable. Try again.',true)}};
 const oldSearch=search;
 search=async function(q){page=1;modeForMore='search';const id=++token;view='discover';$('discover').classList.remove('hidden');$('library').classList.add('hidden');$('title').textContent='Search results';$('subtitle').textContent='Anime catalog';$('results').innerHTML='';$('more').classList.add('hidden');notice('Searching…');try{const data=await getAnime('https://api.jikan.moe/v4/anime?'+new URLSearchParams({q,limit:25,sfw:true}),'search',q,1);if(id!==token)return;show(data)}catch(e){if(id!==token)return;notice('Search unavailable. Try again.',true)}};
-$('more').addEventListener('click',async()=>{if(loadingMore)return;loadingMore=true;$('more').disabled=true;$('more').textContent='Loading…';const next=page+1;try{const q=modeForMore==='search'?query:null;const items=await getAnime('https://api.jikan.moe/v4/top/anime?limit=25&sfw=true&page='+next,modeForMore,q,next);page=next;catalog.push(...items);$('results').insertAdjacentHTML('beforeend',items.map(a=>card(a)).join(''));$('more').classList.toggle('hidden',items.length===0)}catch{showToast('Could not load more anime')}finally{loadingMore=false;$('more').disabled=false;$('more').textContent='Load more anime'}});
+$('more').addEventListener('click',async()=>{if(loadingMore)return;loadingMore=true;$('more').disabled=true;$('more').textContent='Loading…';const next=page+1;try{const q=modeForMore==='search'?query:null;const items=await getAnime('https://api.jikan.moe/v4/top/anime?limit=25&sfw=true&page='+next,modeForMore,q,next);page=next;delete $('more').dataset.pageError;catalog.push(...items);$('results').insertAdjacentHTML('beforeend',items.map(a=>card(a)).join(''));$('more').classList.toggle('hidden',items.length===0)}catch{showToast('Could not load more anime');$('more').dataset.pageError='1'}finally{loadingMore=false;$('more').disabled=false;$('more').textContent='Load more anime'}});
 $('close-details').addEventListener('click',()=>{$('details').classList.add('hidden');document.body.style.overflow=''});
 async function openDetails(id){
 const a=catalog.find(x=>String(x.mal_id)===id)||library.find(x=>String(x.id)===id);if(!a)return;
@@ -918,4 +918,33 @@ body.frame-home-mode .frame-trending{display:block!important}
 .frame-episode .frame-episode-thumb img{width:100%!important;height:100%!important;object-fit:cover!important}
 @media(min-width:1000px){.details-inner{max-width:1000px}.frame-series-cinematic{min-height:360px}.frame-series-content{padding:46px}}
 @media(max-width:600px){.frame-series-cinematic{min-height:260px;border-radius:17px!important}.frame-series-content{padding:23px 20px}.frame-series-content h2{font-size:32px!important}}
-</style></body></html>
+</style><script id="frame-infinite-discover">
+(function(){
+'use strict';
+const more=document.getElementById('more'),results=document.getElementById('results');
+if(!more||!results)return;
+more.textContent='Scroll for more anime';
+more.setAttribute('aria-label','Load the next anime page');
+let failed=false,seenCount=0;
+const observer=new IntersectionObserver(entries=>{
+if(!entries.some(x=>x.isIntersecting)||failed||more.disabled||more.classList.contains('hidden'))return;
+if(document.body.classList.contains('frame-home-mode')||document.body.classList.contains('frame-library-mode'))return;
+if(!results.children.length)return;
+more.click();
+},{root:null,rootMargin:'850px 0px',threshold:0});
+observer.observe(more);
+const mutations=new MutationObserver(()=>{
+const n=results.children.length;
+if(n!==seenCount){seenCount=n;failed=false}
+if(!more.disabled&&!more.classList.contains('hidden'))more.textContent=failed?'Retry loading anime':'Scroll for more anime';
+});
+mutations.observe(results,{childList:true});
+const state=new MutationObserver(()=>{
+if(more.disabled)return;
+if(more.textContent==='Load more anime')more.textContent=failed?'Retry loading anime':'Scroll for more anime';
+});
+state.observe(more,{childList:true,attributes:true,attributeFilter:['disabled','class']});
+more.addEventListener('click',e=>{if(e.isTrusted)failed=false},true);
+window.addEventListener('unhandledrejection',()=>{},false);
+})();
+</script><style id="frame-infinite-discover-style">#more.more{font-size:12px;border:1px solid #ffffff22;background:#1b1924;color:#c9c3d5;padding:13px 24px;border-radius:14px}#more.more:disabled{opacity:.65}</style></body></html>
