@@ -268,36 +268,74 @@ const items=sortedGroup(),selected=items.find(x=>String(x.id)===activeSeasonId)|
 activeSeasonId=String(selected.id);
 const name=selected.seriesName||base(selected.title)||selected.title,watched=Math.max(0,Number(selected.watched)||0),total=Number(selected.total)||0,pct=total?Math.min(100,Math.round(watched/total*100)):0;
 el('detail-body').innerHTML='<div class="frame-series-header"><div class="frame-kicker">FRAME / MY LIST</div><h2>'+safe(name)+'</h2><p>'+items.length+' saved '+(items.length===1?'season':'seasons')+'</p></div>'+
-'<div class="frame-season-strip">'+items.map((x,i)=>'<button class="frame-season-tile '+(String(x.id)===activeSeasonId?'active':'')+'" data-select-season="'+safe(x.id)+'">'+(x.poster?'<img src="'+safe(x.poster)+'" loading="lazy" alt="">':'<div class="frame-no-poster"></div>')+'<strong>Season '+(i+1)+'</strong><small>'+safe(x.total??'?')+' episodes</small></button>').join('')+'</div>'+
+'<div class="frame-season-strip">'+items.map((x,i)=>'<button class="frame-season-tile '+(String(x.id)===activeSeasonId?'active':'')+'" data-select-season="'+safe(x.id)+'">'+(x.poster?'<img src="'+safe(x.poster)+'" loading="lazy" alt="">':'<div class="frame-no-poster"></div>')+'<strong>Season '+(i+1)+'</strong><small>'+(x.total==null?'Count pending':safe(x.total)+' episodes')</small></button>').join('')+'</div>'+
 '<div class="frame-series-tabs"><button class="active" data-series-tab="episodes">▷ Episodes</button><button data-series-tab="details">Season details</button></div>'+
 '<div class="frame-progress-head"><h3>Season progress</h3><span>'+pct+'%</span></div><div class="frame-progress-bar"><div style="width:'+pct+'%"></div></div>'+
 '<div class="frame-progress-foot"><strong>'+watched+' watched</strong><span>'+(total?Math.max(0,total-watched)+' left':'Total unknown')+'</span></div>'+
 '<div class="frame-season-actions"><label><span>Jump to episode</span><input data-series-edit="watched" inputmode="numeric" type="number" min="0" max="99999" value="'+watched+'"></label><label><span>Status</span><select data-series-edit="status">'+['Plan to Watch','Watching','Completed','On Hold'].map(v=>'<option '+(selected.status===v?'selected':'')+'>'+v+'</option>').join('')+'</select></label></div>'+
 '<div id="frame-season-description" hidden><h3>About this season</h3><p>'+safe(selected.synopsis||'No official description available for this season.')+'</p></div><div class="frame-episode-title"><h3>Episodes</h3><span>'+safe(selected.title)+'</span></div><div id="frame-episode-results" class="frame-episode-results"><p class="frame-episode-loading">Loading episode titles…</p></div>';
 }
+const episodeCache=new Map();
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function jikanJSON(url){
+for(let attempt=0;attempt<3;attempt++){
+try{
+const r=await fetch(url,{cache:'no-store'});
+if(r.ok)return await r.json();
+if(r.status!==429&&r.status<500)break;
+}catch{}
+if(attempt<2)await wait(700*(attempt+1));
+}
+return null;
+}
 async function loadSeriesEpisodes(){
-const req=++seriesRequest,id=activeSeasonId,items=sortedGroup(),a=items.find(x=>String(x.id)===id),target=el('frame-episode-results');if(!a||!target)return;
-let total=Number(a.total)||0,eps=[],malId=String(a.id).startsWith('ani-')?null:Number(a.id);
-if(!malId){try{const d=await aniSeason(Number(String(a.id).slice(4)));malId=d?.idMal||null;if(d?.episodes&&!total)total=d.episodes}catch{}}
-if(malId){try{
-if(!total){const r=await fetch('https://api.jikan.moe/v4/anime/'+malId);if(r.ok){const j=await r.json();total=Number(j.data?.episodes)||0}}
-const r=await fetch('https://api.jikan.moe/v4/anime/'+malId+'/episodes?page=1');if(r.ok){const data=await r.json();eps=(data.data||[]).map((x,i)=>({n:Number(x.mal_id)||i+1,title:x.title||'',filler:x.filler}));}
-}catch{}}
+const req=++seriesRequest,id=activeSeasonId,items=sortedGroup(),a=items.find(x=>String(x.id)===id),target=el('frame-episode-results');
+if(!a||!target)return;
+target.innerHTML='<p class="frame-episode-loading">Loading episode information…</p>';
+let total=Number(a.total)||0,eps=[],malId=String(a.id).startsWith('ani-')?null:Number(a.id),apiError=false;
+if(!malId){try{const d=await aniSeason(Number(String(a.id).slice(4)));malId=d?.idMal||null;if(d?.episodes&&!total)total=d.episodes}catch{apiError=true}}
+const cacheKey=String(a.id);
+if(episodeCache.has(cacheKey)){const cached=episodeCache.get(cacheKey);eps=cached.episodes;total=total||cached.total;malId=malId||cached.malId}
+if(malId&&!eps.length){
+const result=await jikanJSON('https://api.jikan.moe/v4/anime/'+malId+'/episodes?page=1');
+if(result?.data?.length){
+eps=result.data.map((x,i)=>({n:Number(x.mal_id)||i+1,title:x.title||x.title_japanese||'',filler:x.filler}));
+if(!total&&result.pagination?.items?.total)total=Number(result.pagination.items.total)||0;
+}else apiError=true;
+if(!total){const detail=await jikanJSON('https://api.jikan.moe/v4/anime/'+malId);total=Number(detail?.data?.episodes)||0}
+}
 if(req!==seriesRequest||!el('frame-episode-results'))return;
+if(eps.length)episodeCache.set(cacheKey,{episodes:eps,total,malId});
 if(total&&total!==a.total){a.total=total;save();const count=el('detail-body').querySelector('.frame-season-tile.active small');if(count)count.textContent=total+' episodes'}
 const map=new Map(eps.map(ep=>[ep.n,ep]));
 let visible=Math.min(Math.max(total,eps.length,Number(a.watched)||0),50);
-if(!visible){target.innerHTML='<p class="frame-episode-loading">Episode data could not be loaded. Try opening this season again.</p>';return}
+if(!visible){
+target.innerHTML='<div class="frame-episode-loading">Episode information is not available right now.'+(apiError?' The anime service may be busy.':'')+'</div><button class="frame-load-episodes" data-retry-episodes>Retry loading episodes</button>';
+target.querySelector('[data-retry-episodes]').onclick=()=>loadSeriesEpisodes();
+return;
+}
 const render=()=>{
+if(req!==seriesRequest)return;
 const count=Math.min(visible,total||Math.max(visible,eps.length));
 target.innerHTML=Array.from({length:count},(_,i)=>{
 const n=i+1,ep=map.get(n),done=n<=(Number(a.watched)||0),hasTitle=ep?.title&&ep.title.toLowerCase()!=='episode '+n;
 return '<button class="frame-episode '+(done?'watched':'')+'" data-episode-number="'+n+'"><div class="frame-episode-number">'+String(n).padStart(2,'0')+'</div><div class="frame-episode-copy"><strong>'+safe(hasTitle?ep.title:'Episode '+n)+'</strong><small>S'+(items.indexOf(a)+1)+' · E'+n+(ep?.filler?' · Filler':'')+'</small></div><span class="frame-episode-check">'+(done?'✓':'○')+'</span></button>';
-}).join('')+(total&&visible<total?'<button class="frame-load-episodes" id="frame-load-episodes">Show next 50 episodes · '+(total-visible)+' remaining</button>':'');
+}).join('')+((total&&visible<total)||(!total&&eps.length>=100)?'<button class="frame-load-episodes" id="frame-load-episodes">Show next episodes</button>':'')+
+(apiError?'<button class="frame-load-episodes" data-retry-episodes>Retry episode titles</button>':'');
+const retry=target.querySelector('[data-retry-episodes]');if(retry)retry.onclick=()=>{episodeCache.delete(cacheKey);loadSeriesEpisodes()};
 const more=el('frame-load-episodes');if(more)more.onclick=async()=>{
-more.disabled=true;more.textContent='Loading episodes…';const start=visible+1;visible=Math.min(total,visible+50);
-if(malId){const firstPage=Math.floor((start-1)/100)+1,lastPage=Math.floor((visible-1)/100)+1;for(let page=firstPage;page<=lastPage;page++){if([...map.keys()].some(n=>n>=(page-1)*100+1&&n<=page*100))continue;try{const r=await fetch('https://api.jikan.moe/v4/anime/'+malId+'/episodes?page='+page);if(r.ok){const j=await r.json();for(const x of j.data||[])map.set(Number(x.mal_id),{n:Number(x.mal_id),title:x.title||'',filler:x.filler})}}catch{}}}
-if(req===seriesRequest)render();
+more.disabled=true;more.textContent='Loading more episodes…';
+const start=visible+1;const next=Math.min(total||visible+50,visible+50);
+if(malId){
+const firstPage=Math.floor((start-1)/100)+1,lastPage=Math.floor((next-1)/100)+1;
+for(let page=firstPage;page<=lastPage;page++){
+if([...map.keys()].some(n=>n>=(page-1)*100+1&&n<=page*100))continue;
+const j=await jikanJSON('https://api.jikan.moe/v4/anime/'+malId+'/episodes?page='+page);
+for(const x of j?.data||[])map.set(Number(x.mal_id),{n:Number(x.mal_id),title:x.title||x.title_japanese||'',filler:x.filler});
+if(!total&&j?.pagination?.items?.total)total=Number(j.pagination.items.total);
+}
+}
+visible=next;render();
 };
 };
 render();
