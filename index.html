@@ -353,8 +353,22 @@ else target.innerHTML='<p class="frame-episode-loading">Loading episode informat
 if(!malId){
 try{const d=await aniSeason(Number(String(a.id).slice(4)));if(!stillHere())return;malId=d?.idMal||null;updateTotal(Number(d?.episodes)||0)}catch{}
 }
+if(!malId&&String(a.id).startsWith('ani-')){
+try{
+const r=await jikanJSON('https://api.jikan.moe/v4/anime?q='+encodeURIComponent(a.title)+'&limit=5&sfw=true');
+if(!stillHere())return;
+const norm=t=>String(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const match=r?.data?.find(x=>[x.title,x.title_english,x.title_japanese].some(t=>norm(t)===norm(a.title)));
+if(match){malId=Number(match.mal_id)||null;updateTotal(Number(match.episodes)||0)}
+}catch{}
+}
 if(!stillHere())return;
 if(malId&&!map.has(start)){failed=!(await fetchPage(Math.floor((start-1)/100)+1))}
+if(!total&&malId){
+const detail=await jikanJSON('https://api.jikan.moe/v4/anime/'+malId+'/full');
+if(!stillHere())return;
+updateTotal(Number(detail?.data?.episodes)||0);
+}
 if(!stillHere())return;
 if(map.size||total)persist();
 render();
