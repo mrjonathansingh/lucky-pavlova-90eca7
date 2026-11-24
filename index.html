@@ -277,18 +277,22 @@ el('detail-body').innerHTML='<div class="frame-series-header"><div class="frame-
 }
 const episodeCache=new Map();
 const episodePageBySeason=new Map();
+const episodeDiagnostics=new Map();
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function jikanJSON(url){
+let issue='Unknown API error';
 for(let attempt=0;attempt<2;attempt++){
-const c=new AbortController(),timeout=setTimeout(()=>c.abort(),4500);
+const c=new AbortController(),timeout=setTimeout(()=>c.abort(),6500);
 try{
-const r=await fetch(url,{signal:c.signal});
-if(r.ok)return await r.json();
-if(r.status!==429)break;
-}catch(e){if(e?.name==='AbortError')break}
+const r=await fetch(url,{signal:c.signal,cache:'no-store'});
+if(r.ok){episodeDiagnostics.delete(url);return await r.json()}
+issue='HTTP '+r.status+(r.status===429?' (rate limited)':'');
+if(r.status!==429&&r.status<500)break;
+}catch(e){issue=e?.name==='AbortError'?'Request timed out':'Network request failed'}
 finally{clearTimeout(timeout)}
-if(attempt===0)await wait(450);
+if(attempt===0)await wait(650);
 }
+episodeDiagnostics.set(url,issue);
 return null;
 }
 async function loadSeriesEpisodes(){
@@ -297,7 +301,7 @@ if(!a||!target)return;
 const cacheKey=String(a.id),cached=episodeCache.get(cacheKey);
 let total=Number(a.total)||cached?.total||0,malId=String(a.id).startsWith('ani-')?(cached?.malId||null):Number(a.id);
 const map=new Map((cached?.episodes||[]).map(x=>[x.n,x]));
-let start=episodePageBySeason.get(cacheKey)||1,loadingPage=false,failed=false;
+let start=episodePageBySeason.get(cacheKey)||1,loadingPage=false,failed=false,issue='';
 if(total&&start>total)start=Math.floor((total-1)/50)*50+1;
 function stillHere(){return req===seriesRequest&&el('frame-episode-results')===target}
 function persist(){episodeCache.set(cacheKey,{episodes:[...map.values()],total,malId})}
@@ -309,7 +313,9 @@ async function fetchPage(page){
 if(!malId)return false;
 const first=(page-1)*100+1;
 if(map.has(first))return true;
-const j=await jikanJSON('https://api.jikan.moe/v4/anime/'+malId+'/episodes?page='+page);
+const endpoint='https://api.jikan.moe/v4/anime/'+malId+'/episodes?page='+page;
+const j=await jikanJSON(endpoint);
+issue=episodeDiagnostics.get(endpoint)||'';
 if(!stillHere())return false;
 if(!j?.data?.length)return false;
 for(const x of j.data){
@@ -324,14 +330,14 @@ const last=Math.min(start+49,total||Math.max(...map.keys(),0),99999);
 const hasAny=last>=start;
 let html='<div class="frame-episode-pager"><label>Go to episode <input type="number" min="1" max="'+(total||99999)+'" value="'+start+'" inputmode="numeric" data-episode-page-input></label><button type="button" data-episode-page-go>Go</button></div>';
 if(!hasAny){
-html+='<p class="frame-episode-loading">Episode titles are unavailable right now. Try again.</p><button class="frame-load-episodes" data-retry-episodes>Retry</button>';
+html+='<p class="frame-episode-loading">Episode data could not be loaded'+(issue?' ('+safe(issue)+')':'')+'. Your tracking remains available below.</p><button class="frame-load-episodes" data-retry-episodes>Retry titles</button>';
 }else{
 html+=Array.from({length:last-start+1},(_,i)=>{
 const n=start+i,ep=map.get(n),done=n<=Number(a.watched||0),title=ep?.title&&ep.title.toLowerCase()!=='episode '+n?ep.title:'Episode '+n;
 return '<button class="frame-episode '+(done?'watched':'')+'" data-episode-number="'+n+'"><div class="frame-episode-number">'+String(n).padStart(2,'0')+'</div><div class="frame-episode-copy"><strong>'+safe(title)+'</strong><small>S'+(items.indexOf(a)+1)+' · E'+n+(ep?.filler?' · Filler':'')+'</small></div><span class="frame-episode-check">'+(done?'✓':'○')+'</span></button>';
 }).join('');
 html+='<div class="frame-episode-pager">'+(start>1?'<button data-episode-prev>Previous 50</button>':'')+((total&&last<total)||(!total&&map.size>=last)?'<button data-episode-next>Next 50</button>':'')+'</div>';
-if(failed)html+='<button class="frame-load-episodes" data-retry-episodes>Retry episode titles</button>';
+if(failed)html+='<p class="frame-episode-loading">Episode titles unavailable'+(issue?' · '+safe(issue):'')+'</p><button class="frame-load-episodes" data-retry-episodes>Retry episode titles</button>';
 }
 target.innerHTML=html;
 const go=async(n)=>{
@@ -370,6 +376,7 @@ if(!stillHere())return;
 updateTotal(Number(detail?.data?.episodes)||0);
 }
 if(!stillHere())return;
+if(!total&&!map.size&&Number(a.watched)>0)updateTotal(Number(a.watched));
 if(map.size||total)persist();
 render();
 }
