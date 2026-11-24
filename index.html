@@ -442,20 +442,34 @@ document.body.classList.toggle('frame-home-mode',section==='home');
 document.querySelectorAll('.bottom [data-nav]').forEach(b=>b.classList.toggle('on',b.dataset.nav===section));
 if(section==='home'){render();window.scrollTo(0,0)}
 }
-function openGroup(key){
+function openGroup(key,seasonId,episode){
 navigate('library');
 document.querySelector('.tabs [data-view="library"]')?.click();
 const cards=[...document.querySelectorAll('#saved [data-group]')];
 const card=cards.find(x=>x.dataset.group===key);
-if(card)card.querySelector('[data-action="open-series"]')?.click();
+if(!card)return;
+card.querySelector('[data-action="open-series"]')?.click();
+if(!seasonId)return;
+const tile=[...document.querySelectorAll('#detail-body [data-select-season]')].find(b=>b.dataset.selectSeason===String(seasonId));
+if(tile&&!tile.classList.contains('active'))tile.click();
+if(!episode)return;
+let attempts=0;
+const jump=()=>{
+const input=document.querySelector('#frame-episode-results [data-episode-page-input]');
+if(input){input.value=episode;document.querySelector('#frame-episode-results [data-episode-page-go]')?.click();return}
+if(++attempts<18)setTimeout(jump,350);
+};
+setTimeout(jump,100);
 }
 function render(){
 const all=groups(),watching=all.filter(g=>g.items.some(a=>a.status==='Watching')),planned=all.filter(g=>g.items.some(a=>a.status==='Plan to Watch')),completed=all.filter(g=>g.items.every(a=>a.status==='Completed'));
-const current=watching.sort((a,b)=>(b.watched>0?1:0)-(a.watched>0?1:0))[0];
+const current=watching.find(g=>g.items.some(a=>Number(a.watched)>0))||watching[0];
+const nextSeason=g=>g?.items.find(a=>a.status==='Watching'&&(a.total==null||Number(a.watched||0)<Number(a.total)))||g?.items.find(a=>a.status==='Watching')||g?.items[0];
+const nextNumber=g=>Number(nextSeason(g)?.watched||0)+1;
 const tiles=(list)=>'<div class="frame-home-row">'+list.slice(0,12).map(g=>'<button class="frame-home-tile" data-home-open="'+esc(g.key)+'">'+img(g)+'<strong>'+esc(name(g))+'</strong><small>'+g.watched+(g.total?' / '+g.total:'')+' watched</small></button>').join('')+'</div>';
 home.innerHTML='<div class="frame-home-eyebrow">YOUR ANIME SPACE</div><h1>Welcome back.</h1><p class="frame-home-sub">Pick up where you left off.</p>'+
 '<div class="frame-home-stats"><div class="frame-home-stat"><strong>'+all.length+'</strong><small>Anime saved</small></div><div class="frame-home-stat"><strong>'+all.reduce((n,g)=>n+g.watched,0)+'</strong><small>Episodes watched</small></div><div class="frame-home-stat"><strong>'+completed.length+'</strong><small>Completed</small></div></div>'+
-(current?'<div class="frame-home-hero">'+img(current)+'<div class="copy"><small>CONTINUE WATCHING</small><h3>'+esc(name(current))+'</h3><p>'+current.watched+' episodes watched'+(current.total?' · '+Math.max(0,current.total-current.watched)+' remaining':'')+'</p><button class="frame-home-primary" data-home-open="'+esc(current.key)+'">Continue watching</button></div></div>':
+(current?'<div class="frame-home-hero">'+img(current)+'<div class="copy"><small>CONTINUE WATCHING</small><h3>'+esc(name(current))+'</h3><p>'+current.watched+' episodes watched'+(current.total?' · '+Math.max(0,current.total-current.watched)+' remaining':'')+'</p><button class="frame-home-primary" data-home-open="'+esc(current.key)+'" data-home-season="'+esc(String(nextSeason(current)?.id||''))+'" data-home-episode="'+nextNumber(current)+'">Open next episode</button></div></div>':
 '<div class="frame-home-empty"><strong>'+(all.length?'Ready for your next anime?':'Your anime space starts here.')+'</strong><div>'+(all.length?'Set an anime to Watching to see it here.':'Find an anime, save it, and it will appear on your Home screen.')+'</div><button data-home-discover>Explore anime</button></div>')+
 (watching.length?'<div class="frame-home-head"><h2>Currently watching</h2><button data-home-library>My library</button></div>'+tiles(watching):'')+
 (planned.length?'<div class="frame-home-head"><h2>Up next</h2><button data-home-library>View all</button></div>'+tiles(planned):'')+
@@ -473,7 +487,7 @@ if(section==='search'){const input=document.getElementById('query');input?.focus
 else window.scrollTo({top:0,behavior:'auto'});
 },true);
 home.addEventListener('click',e=>{const b=e.target.closest('[data-home-open],[data-home-discover],[data-home-library]');if(!b)return;
-if(b.hasAttribute('data-home-open'))openGroup(b.dataset.homeOpen);
+if(b.hasAttribute('data-home-open'))openGroup(b.dataset.homeOpen,b.dataset.homeSeason,Number(b.dataset.homeEpisode)||0);
 else if(b.hasAttribute('data-home-library')){navigate('library');document.querySelector('.tabs [data-view="library"]')?.click()}
 else{navigate('discover');document.querySelector('.tabs [data-view="discover"]')?.click()}
 });
