@@ -198,7 +198,7 @@ const n=Number(ep.number),image=ep.still||poster,description=cleanTitle(ep.descr
 return '<article class="frame-guide-episode"><div class="frame-guide-episode-image">'+(image?'<img src="'+esc(image)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':'<span>'+n+'</span>')+'</div><div class="frame-guide-episode-content"><small>EPISODE '+n+(ep.filler?' · FILLER':'')+'</small><h4>'+esc(ep.title&&ep.title!=='Episode '+n?ep.title:'Episode '+n)+'</h4>'+(description?'<p>'+esc(description)+'</p>':'')+(ep.url?'<a href="'+esc(ep.url)+'" target="_blank" rel="noopener noreferrer">Episode source ↗</a>':'')+(m.idMal?'<button type="button" data-guide-detail="'+n+'">Show episode details ↗</button>':'<span class="frame-guide-no-details">Detailed summaries not supplied by this catalog</span>')+'<div class="frame-guide-detail" data-guide-slot="'+n+'"></div></div></article>';
 }).join('')+'</div>';
 }
-draw('Showing available episode information. Select an episode to request its full details.');
+// Render after TMDB state and helper functions have been initialized.
 // TMDB is optional: the credential is entered on this device, never committed to GitHub.
 const FRAME_TMDB_WORKER='https://black-leaf-7ccb.mrjonathansingh.workers.dev';
 const tmdbKey=()=>localStorage.getItem('frame_tmdb_key')||'';
@@ -255,6 +255,7 @@ if(exact.length===1){await loadTmdbSeason(exact[0].season_number)}
 else{tmdbMessage('TMDB: '+tmdbSeasons.length+' seasons found, but none matched uniquely. Select the correct TMDB season to avoid mixing up episodes.')}
 }catch(e){tmdbMessage('TMDB request failed: '+String(e.message||e))}
 }
+draw('Showing available episode information. Select an episode to request its full details.');
 if(tmdbKey()||FRAME_TMDB_WORKER)enrichTmdb();
 if(m.idMal){
 const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),5000);
@@ -298,7 +299,7 @@ finally{clearTimeout(t);if(alive()){btn.textContent='Refresh details ↻';btn.di
 };
 $('season-list').addEventListener('click',e=>{const b=e.target.closest('[data-season]');if(b){const m=seasons.find(x=>x.id===Number(b.dataset.season));if(m)selectSeason(m)}});
 await selectSeason(seasons.find(m=>m.id===aniId)||root);
-}catch(e){if(generation!==detailGeneration)return;$('season-list').textContent='Season information is unavailable right now. Try again later.';$('episode-guide').textContent='No episode information loaded.'}
+}catch(e){console.error('FRAME episode guide error:',e);if(generation!==detailGeneration)return;$('season-list').textContent='Season information is unavailable right now. Try again later.';$('episode-guide').textContent='No episode information loaded.'}
 };
 
 $('filter').addEventListener('change',renderLibrary);save();load('discover');
