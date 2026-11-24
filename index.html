@@ -700,4 +700,44 @@ body{background:radial-gradient(ellipse 90% 430px at 50% -180px,#272139 0%,#0c0b
 .frame-home-metrics>div{padding:18px 7px}.frame-home-metrics span{font-size:8px;letter-spacing:.4px}.frame-home-tile{width:137px;min-width:137px}.frame-home-tile img{width:137px;height:185px}
 .frame-section-head h2{font-size:23px}#library .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+</style><style id="frame-desktop-layout">
+@media(min-width:1000px){
+:root{--frame-rail:238px}
+body{background:radial-gradient(ellipse 65% 60% at 68% -15%,#242035 0%,#0a0a10 60%,#07080b 100%) fixed}
+.app{margin-left:var(--frame-rail);margin-right:auto;max-width:none;width:calc(100% - var(--frame-rail));padding:0 clamp(35px,4vw,82px) 90px}
+.top{height:91px;margin:0 0 24px;padding:0;border-bottom:1px solid #ffffff13}
+.top .logo{font-size:29px}.top small{letter-spacing:1.6px}
+.bottom{position:fixed;left:0;right:auto;top:0;bottom:0;transform:none;width:var(--frame-rail);height:100vh;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:8px;padding:130px 15px 30px;border:0;border-right:1px solid #ffffff13;border-radius:0;background:#0e0d14fa;box-shadow:8px 0 50px #0003;backdrop-filter:blur(18px)}
+.bottom:before{content:"F R A M E  .";position:absolute;top:39px;left:27px;color:#eee7ff;font-size:18px;letter-spacing:3px;font-weight:950}
+.bottom:after{content:"YOUR ANIME. YOUR SPACE.";position:absolute;bottom:34px;left:27px;font-size:9px;letter-spacing:1.7px;color:#77717f}
+.bottom button{display:flex;align-items:center;gap:17px;flex:none;width:100%;height:55px;text-align:left;padding:12px 18px;border-radius:13px;font-size:14px;font-weight:750}
+.bottom button span{font-size:23px;line-height:1;margin:0;width:25px;text-align:center}
+.bottom button.on{background:#b9a2ff1c;color:#e2d7ff}
+.bottom button:hover{background:#ffffff0d;color:#fff}
+.frame-home{padding-top:3px!important}
+.frame-home-intro{padding:22px 0 30px}.frame-home-intro h1{font-size:clamp(52px,5.2vw,82px)!important}
+.frame-feature{min-height:clamp(440px,43vw,580px);border-radius:25px}
+.frame-feature-art img{object-position:center 28%}
+.frame-feature-content{max-width:720px;padding:50px}
+.frame-feature-content h2{font-size:clamp(44px,4.5vw,67px)}
+.frame-feature-button{min-width:250px}
+.frame-home-metrics{max-width:820px;margin:24px 0 40px}
+.frame-home-row{gap:20px}.frame-home-tile,.frame-home-tile img{width:180px}.frame-home-tile{min-width:180px}.frame-home-tile img{height:245px}
+.hero{padding:36px 0}.hero h1{font-size:clamp(50px,5vw,72px)}
+#discover .grid,#frame-search-screen .grid{grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:28px 20px}
+#library .grid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:28px 21px}
+.anime h3{font-size:14px}.heading h2{font-size:30px}
+.details{padding:40px max(40px,calc((100vw - 1050px)/2)) 90px;background:#09090ef9}
+.details-inner{max-width:1000px}
+.frame-series-header{padding:25px 30px!important}
+.frame-season-strip{gap:17px!important}.frame-season-tile{min-width:155px!important}
+.frame-episode-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.frame-episode-results>.frame-episode-pager,.frame-episode-results>.frame-episode-loading,.frame-episode-results>.frame-load-episodes{grid-column:1/-1}
+.frame-episode{margin:0!important;min-width:0}
+.frame-episode .frame-episode-thumb{width:115px;height:70px}
+.frame-episode-copy{min-width:0}
+#frame-search-screen{max-width:1050px}
+#frame-search-screen .search{max-width:680px}
+}
+@media(min-width:1500px){:root{--frame-rail:260px}.app{padding-left:6vw;padding-right:6vw}.frame-feature{min-height:590px}}
 </style></body></html>
