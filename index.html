@@ -1057,4 +1057,19 @@ window.addEventListener('unhandledrejection',()=>{},false);
 .frame-guide-no-details{font-size:11px;color:#9991a4}
 .frame-guide-detail p{margin:10px 0 0}
 @media(max-width:600px){.frame-guide-episode{gap:10px;padding:10px}.frame-guide-episode-image{width:90px;height:75px}.frame-guide-episode-content h4{font-size:13px}}
-</style><style id="frame-tmdb-enrichment-style">.frame-tmdb-setup{margin:6px 0 12px;padding:9px 12px;border:1px solid #ffffff25;border-radius:9px;background:#262132;color:#eee3ff;font-size:12px;cursor:pointer}</style></body></html>
+</style><style id="frame-tmdb-enrichment-style">.frame-tmdb-setup{margin:6px 0 12px;padding:9px 12px;border:1px solid #ffffff25;border-radius:9px;background:#262132;color:#eee3ff;font-size:12px;cursor:pointer}</style><button id="frame-tmdb-global" type="button" aria-label="Configure TMDB episode details">🎬 TMDB</button>
+<style id="frame-tmdb-global-css">#frame-tmdb-global{position:fixed;right:12px;bottom:calc(85px + env(safe-area-inset-bottom));z-index:110;background:#282035;color:#f3eaff;border:1px solid #a38cf777;border-radius:24px;padding:10px 14px;font-size:12px;font-weight:800;box-shadow:0 5px 25px #0009;cursor:pointer}@media(min-width:800px){#frame-tmdb-global{bottom:24px;right:24px}}</style>
+<script id="frame-tmdb-global-js">
+(function(){
+const button=document.getElementById('frame-tmdb-global');
+const refresh=()=>{button.textContent=sessionStorage.getItem('frame_tmdb_key')?'🎬 TMDB ✓':'🎬 TMDB'};
+button.addEventListener('click',()=>{
+const key=window.prompt('Enter your TMDB v3 API key. It stays in this browser tab and is not saved to GitHub:',sessionStorage.getItem('frame_tmdb_key')||'');
+if(key===null)return;
+if(!/^[a-f0-9]{32}$/i.test(key.trim())){window.alert('Please enter a valid 32-character TMDB v3 API key.');return}
+sessionStorage.setItem('frame_tmdb_key',key.trim());refresh();
+window.alert('TMDB enabled for this tab. Open an anime from Discover to load its enriched episode guide.');
+});
+refresh();
+})();
+</script></body></html>
