@@ -514,13 +514,13 @@ const current=watching.find(g=>g.items.some(a=>Number(a.watched)>0))||watching[0
 const nextSeason=g=>g?.items.find(a=>a.status==='Watching'&&(a.total==null||Number(a.watched||0)<Number(a.total)))||g?.items.find(a=>a.status==='Watching')||g?.items[0];
 const nextNumber=g=>Number(nextSeason(g)?.watched||0)+1;
 const tiles=(list)=>'<div class="frame-home-row">'+list.slice(0,12).map(g=>'<button class="frame-home-tile" data-home-open="'+esc(g.key)+'">'+img(g)+'<strong>'+esc(name(g))+'</strong><small>'+g.watched+(g.total?' / '+g.total:'')+' watched</small></button>').join('')+'</div>';
-home.innerHTML='<div class="frame-home-eyebrow">YOUR ANIME SPACE</div><h1>Welcome back.</h1><p class="frame-home-sub">Pick up where you left off.</p>'+
-'<div class="frame-home-stats"><div class="frame-home-stat"><strong>'+all.length+'</strong><small>Anime saved</small></div><div class="frame-home-stat"><strong>'+all.reduce((n,g)=>n+g.watched,0)+'</strong><small>Episodes watched</small></div><div class="frame-home-stat"><strong>'+completed.length+'</strong><small>Completed</small></div></div>'+
-(current?'<div class="frame-home-hero">'+img(current)+'<div class="copy"><small>CONTINUE WATCHING</small><h3>'+esc(name(current))+'</h3><p>'+current.watched+' episodes watched'+(current.total?' · '+Math.max(0,current.total-current.watched)+' remaining':'')+'</p><button class="frame-home-primary" data-home-open="'+esc(current.key)+'" data-home-season="'+esc(String(nextSeason(current)?.id||''))+'" data-home-episode="'+nextNumber(current)+'">Open next episode</button></div></div>':
-'<div class="frame-home-empty"><strong>'+(all.length?'Ready for your next anime?':'Your anime space starts here.')+'</strong><div>'+(all.length?'Set an anime to Watching to see it here.':'Find an anime, save it, and it will appear on your Home screen.')+'</div><button data-home-discover>Explore anime</button></div>')+
-(watching.length?'<div class="frame-home-head"><h2>Currently watching</h2><button data-home-library>My library</button></div>'+tiles(watching):'')+
-(planned.length?'<div class="frame-home-head"><h2>Up next</h2><button data-home-library>View all</button></div>'+tiles(planned):'')+
-(completed.length?'<h2>Completed</h2>'+tiles(completed):'');
+home.innerHTML='<div class="frame-home-intro"><div><span class="frame-home-eyebrow">YOUR PERSONAL ANIME TRACKER</span><h1>YOUR WORLD.<br><em>IN EPISODES.</em></h1><p class="frame-home-sub">Every story you love, all in one place.</p></div><div class="frame-home-intro-mark">F<span>.</span></div></div>'+
+(current?'<section class="frame-feature" style="'+(poster(current)?'--feature-image:url(&quot;'+esc(poster(current))+'&quot;)':'')+'"><div class="frame-feature-art">'+img(current)+'</div><div class="frame-feature-shade"></div><div class="frame-feature-content"><span class="frame-feature-tag"><span class="frame-live-dot"></span> PICK UP WHERE YOU LEFT OFF</span><h2>'+esc(name(current))+'</h2><p>Episode '+nextNumber(current)+' is next'+(current.total?' · '+Math.max(0,current.total-current.watched)+' remaining':'')+'</p><div class="frame-feature-progress"><span style="width:'+(current.total?Math.min(100,Math.round(current.watched/current.total*100)):0)+'%"></span></div><button class="frame-feature-button" data-home-open="'+esc(current.key)+'" data-home-season="'+esc(String(nextSeason(current)?.id||''))+'" data-home-episode="'+nextNumber(current)+'">▶ &nbsp; Continue episode '+nextNumber(current)+'</button></div></section>':
+'<section class="frame-feature frame-feature-empty"><div class="frame-feature-content"><span class="frame-feature-tag">YOUR NEXT OBSESSION AWAITS</span><h2>Every great story starts somewhere.</h2><p>'+(all.length?'Set an anime to Watching to pick up right here.':'Build your list, track your progress, and make FRAME yours.')+'</p><button class="frame-feature-button" data-home-discover>Explore anime &nbsp; ↗</button></div></section>')+
+'<div class="frame-home-metrics"><div><strong>'+all.length+'</strong><span>IN YOUR LIBRARY</span></div><div><strong>'+all.reduce((n,g)=>n+g.watched,0)+'</strong><span>EPISODES WATCHED</span></div><div><strong>'+completed.length+'</strong><span>STORIES FINISHED</span></div></div>'+
+(watching.length?'<div class="frame-home-head frame-section-head"><div><span class="frame-section-kicker">YOUR ROTATION</span><h2>Continue watching</h2></div><button data-home-library>See all ↗</button></div>'+tiles(watching):'')+
+(planned.length?'<div class="frame-home-head frame-section-head"><div><span class="frame-section-kicker">ON YOUR RADAR</span><h2>Watch next</h2></div><button data-home-library>See all ↗</button></div>'+tiles(planned):'')+
+(completed.length?'<div class="frame-home-head frame-section-head"><div><span class="frame-section-kicker">THE ARCHIVE</span><h2>Finished stories</h2></div></div>'+tiles(completed):'');
 }
 document.querySelector('.bottom').addEventListener('click',e=>{
 const b=e.target.closest('[data-nav]');if(!b)return;
@@ -676,4 +676,28 @@ body{background:radial-gradient(ellipse 90% 430px at 50% -180px,#272139 0%,#0c0b
 .frame-episode .frame-episode-thumb{width:88px;height:55px}.frame-episode-copy strong{font-size:12px!important}.frame-episode{padding:10px!important;gap:10px!important}
 }
 @media(prefers-reduced-motion:reduce){.cover img,.anime{transition:none!important}}
+</style><style id="frame-layout-redesign">
+.frame-home{padding-top:16px!important}.frame-home-intro{display:flex;justify-content:space-between;align-items:center;padding:22px 0 30px;gap:14px}
+.frame-home-intro h1{font-size:clamp(38px,8vw,68px)!important;line-height:.99!important;letter-spacing:-2.5px!important;font-weight:950!important;margin:16px 0!important}
+.frame-home-intro h1 em{font-style:normal;color:#b9a2ff}.frame-home-intro-mark{font-size:clamp(75px,17vw,155px);line-height:.8;font-weight:1000;letter-spacing:-15px;color:#ffffff09;user-select:none}.frame-home-intro-mark span{color:#b9a2ff24}
+.frame-feature{position:relative;isolation:isolate;min-height:clamp(360px,54vw,490px);display:flex;align-items:end;overflow:hidden;border-radius:24px;background:#1b1724;border:1px solid #ffffff1b;box-shadow:0 20px 60px #0008}
+.frame-feature-art{position:absolute;inset:0;z-index:-2}.frame-feature-art img{width:100%;height:100%;object-fit:cover;object-position:center 35%;filter:saturate(.9)}
+.frame-feature-shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(0deg,#08070dfd 0%,#090710ed 27%,#0b091170 62%,#07050a11 100%),linear-gradient(90deg,#08070b55,transparent)}
+.frame-feature-content{padding:clamp(24px,5vw,45px);width:100%;max-width:650px}.frame-feature-tag,.frame-section-kicker{font-size:10px;letter-spacing:2.2px;font-weight:850;color:#c8b5ff}.frame-live-dot{display:inline-block;background:#bc9dff;width:7px;height:7px;border-radius:50%;margin-right:7px;box-shadow:0 0 10px #bc9dff}
+.frame-feature-content h2{font-size:clamp(31px,6vw,56px);line-height:1.06;letter-spacing:-1.8px;margin:14px 0 10px;font-weight:900}.frame-feature-content p{color:#d0cbd7;font-size:13px;margin:0 0 18px}
+.frame-feature-progress{height:3px;max-width:360px;background:#ffffff38;border-radius:3px;margin-bottom:22px;overflow:hidden}.frame-feature-progress span{display:block;height:100%;background:#bba2ff}
+.frame-feature-button{border:0;background:#e9e1ff;color:#170e27;font-size:13px;font-weight:900;padding:15px 23px;border-radius:12px;box-shadow:0 9px 30px #0005}
+.frame-feature-empty{min-height:300px;background:radial-gradient(circle at 80% 20%,#4a306d,#1b1724 45%,#101018 90%)}
+.frame-home-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:#ffffff17;border:1px solid #ffffff15;border-radius:17px;overflow:hidden;margin:19px 0 34px}
+.frame-home-metrics>div{background:#121118;padding:20px 14px;text-align:center}.frame-home-metrics strong{display:block;font-size:clamp(24px,4vw,34px);letter-spacing:-1px}.frame-home-metrics span{display:block;font-size:9px;letter-spacing:1px;color:#a5a0af;margin-top:7px}
+.frame-section-head{margin:36px 0 17px!important;align-items:end}.frame-section-head h2{font-size:26px;letter-spacing:-.8px;margin:5px 0 0}.frame-section-head button{font-size:12px}
+.frame-home-row{gap:15px;padding-bottom:12px}.frame-home-tile{width:165px;min-width:165px}.frame-home-tile img{width:165px;height:220px;border-radius:15px;border:1px solid #ffffff18}.frame-home-tile strong{font-size:13px;margin-top:11px}
+.frame-home-tile small{color:#b9a6df}.frame-home-intro .frame-home-sub{margin:0}
+#library .grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr))}#library .heading{padding:15px 0 12px}
+#library .heading h2{font-size:30px}#library .anime .cover{box-shadow:0 13px 28px #0008}
+@media(max-width:600px){.frame-home-intro{padding:14px 0 22px}.frame-home-intro h1{font-size:38px!important}.frame-home-intro-mark{font-size:86px;letter-spacing:-9px}
+.frame-feature{min-height:385px;border-radius:20px}.frame-feature-art img{object-position:center 20%}.frame-feature-content{padding:23px}.frame-feature-content h2{font-size:34px}.frame-feature-button{width:100%}
+.frame-home-metrics>div{padding:18px 7px}.frame-home-metrics span{font-size:8px;letter-spacing:.4px}.frame-home-tile{width:137px;min-width:137px}.frame-home-tile img{width:137px;height:185px}
+.frame-section-head h2{font-size:23px}#library .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 </style></body></html>
