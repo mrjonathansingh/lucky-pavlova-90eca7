@@ -291,54 +291,56 @@ return null;
 async function loadSeriesEpisodes(){
 const req=++seriesRequest,id=activeSeasonId,items=sortedGroup(),a=items.find(x=>String(x.id)===id),target=el('frame-episode-results');
 if(!a||!target)return;
-target.innerHTML='<p class="frame-episode-loading">Loading episode information…</p>';
-let total=Number(a.total)||0,eps=[],malId=String(a.id).startsWith('ani-')?null:Number(a.id),apiError=false;
-if(!malId){try{const d=await aniSeason(Number(String(a.id).slice(4)));malId=d?.idMal||null;if(d?.episodes&&!total)total=d.episodes}catch{apiError=true}}
-const cacheKey=String(a.id);
-if(episodeCache.has(cacheKey)){const cached=episodeCache.get(cacheKey);eps=cached.episodes;total=total||cached.total;malId=malId||cached.malId}
-if(malId&&!eps.length){
-const result=await jikanJSON('https://api.jikan.moe/v4/anime/'+malId+'/episodes?page=1');
-if(result?.data?.length){
-eps=result.data.map((x,i)=>({n:Number(x.mal_id)||i+1,title:x.title||x.title_japanese||'',filler:x.filler}));
-if(!total&&result.pagination?.items?.total)total=Number(result.pagination.items.total)||0;
-}else apiError=true;
-if(!total){const detail=await jikanJSON('https://api.jikan.moe/v4/anime/'+malId);total=Number(detail?.data?.episodes)||0}
-}
-if(req!==seriesRequest||!el('frame-episode-results'))return;
-if(eps.length)episodeCache.set(cacheKey,{episodes:eps,total,malId});
-if(total&&total!==a.total){a.total=total;save();const count=el('detail-body').querySelector('.frame-season-tile.active small');if(count)count.textContent=total+' episodes'}
+const cacheKey=String(a.id),cached=episodeCache.get(cacheKey);
+let total=Number(a.total)||Number(cached?.total)||0,malId=cached?.malId||(String(a.id).startsWith('ani-')?null:Number(a.id)),eps=cached?.episodes||[],busy=false;
+let visible=Math.min(Math.max(total,eps.length,Number(a.watched)||0,12),50);
 const map=new Map(eps.map(ep=>[ep.n,ep]));
-let visible=Math.min(Math.max(total,eps.length,Number(a.watched)||0),50);
-if(!visible){
-target.innerHTML='<div class="frame-episode-loading">Episode information is not available right now.'+(apiError?' The anime service may be busy.':'')+'</div><button class="frame-load-episodes" data-retry-episodes>Retry loading episodes</button>';
-target.querySelector('[data-retry-episodes]').onclick=()=>loadSeriesEpisodes();
-return;
-}
+const stillHere=()=>req===seriesRequest&&el('frame-episode-results')===target;
 const render=()=>{
-if(req!==seriesRequest)return;
-const count=Math.min(visible,total||Math.max(visible,eps.length));
+if(!stillHere())return;
+const count=Math.min(visible,total||Math.max(visible,eps.length,12));
 target.innerHTML=Array.from({length:count},(_,i)=>{
 const n=i+1,ep=map.get(n),done=n<=(Number(a.watched)||0),hasTitle=ep?.title&&ep.title.toLowerCase()!=='episode '+n;
 return '<button class="frame-episode '+(done?'watched':'')+'" data-episode-number="'+n+'"><div class="frame-episode-number">'+String(n).padStart(2,'0')+'</div><div class="frame-episode-copy"><strong>'+safe(hasTitle?ep.title:'Episode '+n)+'</strong><small>S'+(items.indexOf(a)+1)+' · E'+n+(ep?.filler?' · Filler':'')+'</small></div><span class="frame-episode-check">'+(done?'✓':'○')+'</span></button>';
-}).join('')+((total&&visible<total)||(!total&&eps.length>=100)?'<button class="frame-load-episodes" id="frame-load-episodes">Show next episodes</button>':'')+
-(apiError?'<button class="frame-load-episodes" data-retry-episodes>Retry episode titles</button>':'');
-const retry=target.querySelector('[data-retry-episodes]');if(retry)retry.onclick=()=>{episodeCache.delete(cacheKey);loadSeriesEpisodes()};
+}).join('')+
+'<p class="frame-episode-loading" id="frame-episode-status">'+(busy?'Fetching official episode titles in the background…':eps.length?'Official episode titles loaded.':total?'Episode titles unavailable right now. You can still track progress.':'Episode count not confirmed. You can still track progress.')+'</p>'+
+'<button class="frame-load-episodes" id="frame-load-episodes">Show next 50 episodes</button>'+
+(!busy&&!eps.length?'<button class="frame-load-episodes" data-retry-episodes>Retry official episode titles</button>':'');
 const more=el('frame-load-episodes');if(more)more.onclick=async()=>{
-more.disabled=true;more.textContent='Loading more episodes…';
-const start=visible+1;const next=Math.min(total||visible+50,visible+50);
-if(malId){
-const firstPage=Math.floor((start-1)/100)+1,lastPage=Math.floor((next-1)/100)+1;
-for(let page=firstPage;page<=lastPage;page++){
-if([...map.keys()].some(n=>n>=(page-1)*100+1&&n<=page*100))continue;
-const j=await jikanJSON('https://api.jikan.moe/v4/anime/'+malId+'/episodes?page='+page);
+visible=Math.min(total||visible+50,visible+50);
+render();
+if(malId){const page=Math.floor((visible-1)/100)+1;const j=await fastJikan('https://api.jikan.moe/v4/anime/'+malId+'/episodes?page='+page);
+if(!stillHere())return;
 for(const x of j?.data||[])map.set(Number(x.mal_id),{n:Number(x.mal_id),title:x.title||x.title_japanese||'',filler:x.filler});
-if(!total&&j?.pagination?.items?.total)total=Number(j.pagination.items.total);
-}
-}
-visible=next;render();
+eps=[...map.values()];episodeCache.set(cacheKey,{episodes:eps,total,malId});render()}
 };
+const retry=target.querySelector('[data-retry-episodes]');if(retry)retry.onclick=()=>{episodeCache.delete(cacheKey);loadSeriesEpisodes()};
 };
 render();
+if(eps.length)return;
+busy=true;render();
+try{
+if(!malId&&String(a.id).startsWith('ani-')){
+const aniId=Number(String(a.id).slice(4));
+const data=await Promise.race([aniSeason(aniId),new Promise(resolve=>setTimeout(()=>resolve(null),3500))]);
+if(!stillHere())return;
+malId=data?.idMal||null;if(!total)total=Number(data?.episodes)||0;
+}
+if(malId){
+const j=await fastJikan('https://api.jikan.moe/v4/anime/'+malId+'/episodes?page=1');
+if(!stillHere())return;
+eps=(j?.data||[]).map((x,i)=>({n:Number(x.mal_id)||i+1,title:x.title||x.title_japanese||'',filler:x.filler}));
+for(const ep of eps)map.set(ep.n,ep);
+if(!total)total=Number(j?.pagination?.items?.total)||0;
+}
+if(total&&total!==a.total){a.total=total;save();const label=el('detail-body').querySelector('.frame-season-tile.active small');if(label)label.textContent=total+' episodes'}
+if(eps.length)episodeCache.set(cacheKey,{episodes:eps,total,malId});
+}catch{}
+finally{if(stillHere()){busy=false;render()}}
+}
+async function fastJikan(url){
+const c=new AbortController(),timer=setTimeout(()=>c.abort(),4000);
+try{const r=await fetch(url,{signal:c.signal,cache:'no-store'});return r.ok?await r.json():null}catch{return null}finally{clearTimeout(timer)}
 }
 el('saved').addEventListener('click',e=>{const b=e.target.closest('[data-action="open-series"]');if(!b)return;e.stopImmediatePropagation();openSeries(b.closest('[data-group]').dataset.group)},true);
 el('detail-body').addEventListener('click',e=>{
