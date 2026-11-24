@@ -1178,7 +1178,7 @@ const annotated=cards.map((el,i)=>({el,record:getCard(el),i}));
 const method=sort.value;
 annotated.sort((x,y)=>{const a=x.record?.a,b=y.record?.a;if(!a||!b)return x.i-y.i;if(method==='title')return name(a).localeCompare(name(b));if(method==='progress')return (Number(b.watched)||0)-(Number(a.watched)||0);if(method==='remaining')return remaining(b)-remaining(a);return (y.record?.i||0)-(x.record?.i||0)});
 if(group.value==='franchise')annotated.sort((x,y)=>base(x.record?.a?.seriesName||name(x.record?.a)).localeCompare(base(y.record?.a?.seriesName||name(y.record?.a)))||x.i-y.i);
-for(const x of annotated)saved.appendChild(x.el);
+if(annotated.some((x,i)=>saved.children[i]!==x.el)){for(const x of annotated)saved.appendChild(x.el)}
 }
 sort.addEventListener('change',update);group.addEventListener('change',update);
 cont.addEventListener('click',e=>{const b=e.target.closest('[data-resume]');if(!b)return;const id=b.dataset.resume;const card=[...saved.children].find(x=>x.querySelector('[data-id="'+CSS.escape(id)+'"]'));if(card){card.scrollIntoView({behavior:'smooth',block:'center'});const click=card.querySelector('.cover,img,h3');if(click)click.click()}else{const original=read().find(a=>String(a.id)===id);if(original){const card=[...saved.children].find(x=>x.textContent.includes(name(original)));card?.scrollIntoView({behavior:'smooth',block:'center'})}}});
