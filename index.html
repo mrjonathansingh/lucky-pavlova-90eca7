@@ -795,7 +795,12 @@ const a=list[index],image=a.coverImage?.extraLarge||a.coverImage?.large||'',bann
 section.querySelector('.frame-trending-stage').innerHTML='<div class="frame-trending-background" style="background-image:linear-gradient(90deg,#0b0b13 0%,#0b0b13e9 32%,#0b0b1350 100%),url(&quot;'+esc(banner)+'&quot;)"></div><div class="frame-trending-body"><span class="frame-trending-rank">#'+String(index+1).padStart(2,'0')+' <span> / TRENDING NOW</span></span><h3>'+esc(a.title?.english||a.title?.romaji||'Anime')+'</h3><p>'+esc([a.format,a.seasonYear,a.episodes?a.episodes+' episodes':null].filter(Boolean).join(' · '))+'</p><button data-trend-search>Explore this anime ↗</button></div><img class="frame-trending-poster" src="'+esc(image)+'" alt="" loading="lazy" referrerpolicy="no-referrer">';
 section.querySelector('.frame-trending-dots').innerHTML=list.map((_,i)=>'<button aria-label="Show trending anime '+(i+1)+'" data-trend-index="'+i+'" class="'+(i===index?'active':'')+'"></button>').join('');
 }
-function change(n){if(!list.length)return;index=(n+list.length)%list.length;display()}
+function renderShelf(){
+let shelf=section.querySelector('.frame-trending-shelf');
+if(!shelf){shelf=document.createElement('div');shelf.className='frame-trending-shelf';section.appendChild(shelf)}
+shelf.innerHTML=list.map((a,i)=>'<button class="frame-trending-mini '+(i===index?'active':'')+'" data-trend-index="'+i+'"><span class="frame-trending-mini-cover"><img src="'+esc(a.coverImage?.large||'')+'" alt="" loading="lazy" referrerpolicy="no-referrer"></span><span class="frame-trending-mini-copy"><small>0'+(i+1)+' / TRENDING</small><strong>'+esc(a.title?.english||a.title?.romaji||'Anime')+'</strong></span></button>').join('');
+}
+function change(n){if(!list.length)return;index=(n+list.length)%list.length;display();renderShelf()}
 function start(){clearInterval(interval);if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;interval=setInterval(()=>{if(!document.hidden&&document.body.classList.contains('frame-home-mode'))change(index+1)},6500)}
 section.addEventListener('click',e=>{
 if(e.target.closest('[data-trend-next]')){change(index+1);start()}
@@ -810,7 +815,7 @@ try{
 const query='query { Page(page:1,perPage:7) { media(type:ANIME,sort:TRENDING_DESC,isAdult:false) { id title { english romaji } coverImage { extraLarge large } bannerImage episodes format seasonYear } } }';
 const r=await fetch('https://graphql.anilist.co',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query}),signal:controller.signal});
 if(!r.ok)throw Error('Anime feed unavailable');const json=await r.json();list=(json.data?.Page?.media||[]).filter(a=>a.coverImage?.large);if(!list.length)throw Error('No trending data');
-display();start();
+display();renderShelf();start();
 }catch(e){section.querySelector('.frame-trending-stage').innerHTML='<div class="frame-trending-placeholder">Trending anime is temporarily unavailable. <button data-trend-retry>Try again</button></div>'}
 finally{clearTimeout(timeout)}
 }
@@ -856,4 +861,28 @@ body.frame-home-mode .frame-trending{display:block!important}
 .frame-feature-empty .frame-feature-content{padding:16px!important}
 .frame-feature-empty .frame-feature-button{width:100%!important}
 }
+</style><style id="frame-professional-refinement">
+/* FIX: Trending is already a child of .app; never apply the desktop rail twice. */
+.frame-trending{width:100%!important;max-width:none!important;margin-left:0!important;margin-right:0!important;padding:0!important}
+@media(min-width:1000px){.frame-trending{width:100%!important;max-width:none!important;margin-left:0!important;margin-right:0!important;padding:0!important}}
+.frame-trending-heading{padding:0 1px}
+.frame-trending-stage{min-height:420px!important;box-shadow:0 22px 60px #0006;border-radius:19px!important}
+.frame-trending-body{width:64%!important;max-width:760px}
+.frame-trending-body h3{font-size:clamp(32px,3.3vw,52px)!important;max-width:680px;line-height:1.09!important;letter-spacing:-1.7px!important}
+.frame-trending-poster{right:6%!important;width:23%!important;max-width:245px!important;height:73%!important;top:13%!important}
+.frame-trending-shelf{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:11px;margin-top:17px}
+.frame-trending-mini{display:flex;align-items:center;gap:10px;text-align:left;min-width:0;padding:9px;background:#14141c;border:1px solid #ffffff10;border-radius:12px;color:#f4f2fa;transition:background .2s,border-color .2s}
+.frame-trending-mini.active{border-color:var(--frame-accent);background:#211c2c}
+.frame-trending-mini:hover{background:#25212f}
+.frame-trending-mini-cover{display:block;width:40px;height:56px;flex:none;border-radius:7px;overflow:hidden;background:#292631}
+.frame-trending-mini-cover img{width:100%;height:100%;object-fit:cover}
+.frame-trending-mini-copy{min-width:0}.frame-trending-mini-copy small{display:block;font-size:8px;letter-spacing:1px;color:var(--frame-accent);margin-bottom:5px}
+.frame-trending-mini-copy strong{font-size:10px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.frame-home-intro{margin-top:24px!important}.frame-home-intro h1{font-size:clamp(25px,2.8vw,37px)!important}
+.frame-home-intro .frame-home-eyebrow{font-size:9px!important}
+.frame-home-intro .frame-home-sub{font-size:12px!important}
+@media(min-width:1000px){.frame-trending-shelf{grid-template-columns:repeat(4,minmax(0,1fr))}.frame-trending-mini-cover{width:44px;height:62px}.frame-trending-mini-copy strong{font-size:12px}}
+@media(min-width:1500px){.frame-trending-shelf{grid-template-columns:repeat(7,minmax(0,1fr))}.frame-trending-mini-copy strong{font-size:10px}}
+@media(max-width:999px){.frame-trending-shelf{display:flex;overflow-x:auto;scrollbar-width:none;padding-bottom:6px}.frame-trending-mini{min-width:155px;width:155px;flex:none}}
+@media(max-width:600px){.frame-trending-stage{min-height:355px!important}.frame-trending-body{width:100%!important}.frame-trending-body h3{font-size:28px!important;max-width:84%}.frame-trending-poster{width:34%!important;height:42%!important;right:7%!important;top:7%!important}.frame-trending-mini{min-width:145px;width:145px}.frame-home-intro{margin-top:15px!important}}
 </style></body></html>
