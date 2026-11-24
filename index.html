@@ -200,9 +200,10 @@ return '<article class="frame-guide-episode"><div class="frame-guide-episode-ima
 }
 draw('Showing available episode information. Select an episode to request its full details.');
 // TMDB is optional: the credential is entered on this device, never committed to GitHub.
+const FRAME_TMDB_WORKER='https://black-leaf-7ccb.mrjonathansingh.workers.dev';
 const tmdbKey=()=>localStorage.getItem('frame_tmdb_key')||'';
 const tmdbUrl=(route,params={})=>'https://api.themoviedb.org/3/'+route+'?'+new URLSearchParams({...params,api_key:tmdbKey(),language:'en-US'});
-const tmdbGet=async(route,params={})=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),6500);try{const proxy=localStorage.getItem('frame_tmdb_proxy')||'';const url=proxy?proxy.replace(/\/$/,'')+'/'+route+'?'+new URLSearchParams(params):tmdbUrl(route,params);const r=await fetch(url,{signal:c.signal});if(!r.ok)throw Error('TMDB '+r.status);return await r.json()}finally{clearTimeout(t)}};
+const tmdbGet=async(route,params={})=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),6500);try{const proxy=FRAME_TMDB_WORKER;const url=proxy?proxy.replace(/\/$/,'')+'/'+route+'?'+new URLSearchParams(params):tmdbUrl(route,params);const r=await fetch(url,{signal:c.signal});if(!r.ok)throw Error('TMDB '+r.status);return await r.json()}finally{clearTimeout(t)}};
 const tmdbNorm=x=>String(x||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 let tmdbSeasons=[],tmdbSeriesId=0,tmdbStatus='TMDB not checked yet';
 const tmdbMessage=message=>{tmdbStatus=message;if(alive()){let node=guide.querySelector('#frame-tmdb-status');if(node)node.textContent=message}};
@@ -229,7 +230,7 @@ tmdbMessage('TMDB: '+filled+' episode summaries found in '+(season.name||'season
 }catch(e){tmdbMessage('TMDB request failed: '+String(e.message||e))}
 }
 async function enrichTmdb(){
-if(!(tmdbKey()||localStorage.getItem('frame_tmdb_proxy'))||!alive())return;
+if(!(tmdbKey()||FRAME_TMDB_WORKER)||!alive())return;
 tmdbMessage('TMDB: Searching for this anime…');
 const title=m.title.english||m.title.romaji||'',original=m.title.romaji||title;
 try{
@@ -254,7 +255,7 @@ if(exact.length===1){await loadTmdbSeason(exact[0].season_number)}
 else{tmdbMessage('TMDB: '+tmdbSeasons.length+' seasons found, but none matched uniquely. Select the correct TMDB season to avoid mixing up episodes.')}
 }catch(e){tmdbMessage('TMDB request failed: '+String(e.message||e))}
 }
-if(tmdbKey()||localStorage.getItem('frame_tmdb_proxy'))enrichTmdb();
+if(tmdbKey()||FRAME_TMDB_WORKER)enrichTmdb();
 if(m.idMal){
 const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),5000);
 try{
@@ -1080,7 +1081,7 @@ window.addEventListener('unhandledrejection',()=>{},false);
 <script id="frame-tmdb-global-js">
 (function(){
 const button=document.getElementById('frame-tmdb-global');
-const refresh=()=>{button.textContent=localStorage.getItem('frame_tmdb_proxy')?'🎬 TMDB AUTO ✓':localStorage.getItem('frame_tmdb_key')?'🎬 TMDB ✓':'🎬 SET UP TMDB'};
+const refresh=()=>{button.textContent=FRAME_TMDB_WORKER?'🎬 TMDB AUTO ✓':localStorage.getItem('frame_tmdb_key')?'🎬 TMDB ✓':'🎬 SET UP TMDB'};
 button.addEventListener('click',()=>{
 const current=localStorage.getItem('frame_tmdb_proxy')||'';
 const proxy=window.prompt('Cloudflare Worker URL (leave empty to use a personal TMDB key instead):',current);
