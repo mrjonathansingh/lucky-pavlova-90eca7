@@ -466,7 +466,7 @@ const req=++seriesRequest,id=activeSeasonId,items=sortedGroup(),a=items.find(x=>
 if(!a||!target)return;
 const cacheKey=String(a.id),cached=episodeCache.get(cacheKey);
 let total=Number(a.total)||cached?.total||0,malId=String(a.id).startsWith('ani-')?(cached?.malId||null):Number(a.id);
-const map=new Map((cached?.episodes||[]).map(x=>[x.n,x]));
+const map=new Map((cached?.episodes||[]).filter(x=>!total||Number(x.n)<=total).map(x=>[x.n,x]));
 let start=episodePageBySeason.get(cacheKey)||1,loadingPage=false,failed=false,issue='';
 const minimumTrackable=Math.max(1,Number(a.watched||0)+1);
 if(total&&start>total)start=Math.floor((total-1)/50)*50+1;
@@ -474,7 +474,7 @@ function stillHere(){return req===seriesRequest&&el('frame-episode-results')===t
 function persist(){episodeCache.set(cacheKey,{episodes:[...map.values()],total,malId});saveEpisodeTitles()}
 function updateTotal(n){
 if(!n||n<=0)return;
-total=n;if(a.total!==n){a.total=n;save();const count=el('detail-body')?.querySelector('.frame-season-tile.active small');if(count)count.textContent=n+' episodes'}
+if(Number(a.total)>0){total=Number(a.total);return}total=n;if(a.total!==n){a.total=n;save();const count=el('detail-body')?.querySelector('.frame-season-tile.active small');if(count)count.textContent=n+' episodes'}
 }
 async function fetchPage(page){
 if(!malId)return false;
@@ -486,7 +486,7 @@ issue=episodeDiagnostics.get(endpoint)||'';
 if(!stillHere())return false;
 if(!j?.data?.length)return false;
 for(const x of j.data){
-const n=Number(x.mal_id);if(n>0)map.set(n,{n,title:x.title||x.title_japanese||'',filler:!!x.filler,still:x.images?.jpg?.large_image_url||x.images?.jpg?.image_url||x.images?.webp?.image_url||x.image_url||x.screenshot||''});
+const n=Number(x.mal_id);if(n>0&&(!total||n<=total))map.set(n,{n,title:x.title||x.title_japanese||'',filler:!!x.filler,still:x.images?.jpg?.large_image_url||x.images?.jpg?.image_url||x.images?.webp?.image_url||x.image_url||x.screenshot||''});
 }
 updateTotal(Number(j.pagination?.items?.total)||0);
 persist();return true;
@@ -494,7 +494,7 @@ persist();return true;
 function render(){
 if(!stillHere())return;
 const last=Math.min(start+49,total||Math.max(...map.keys(),0),99999);
-const displayLast=Math.max(last,Math.min(start+49,Math.max(minimumTrackable,start)));
+const displayLast=total>0?Math.min(start+49,total):Math.max(last,Math.min(start+49,Math.max(minimumTrackable,start)));
 const hasAny=displayLast>=start;
 let html='<div class="frame-episode-pager"><label>Go to episode <input type="number" min="1" max="'+(total||99999)+'" value="'+start+'" inputmode="numeric" data-episode-page-input></label><button type="button" data-episode-page-go>Go</button></div>';
 if(!hasAny){
@@ -563,11 +563,11 @@ el('saved').addEventListener('click',e=>{const b=e.target.closest('[data-action=
 el('detail-body').addEventListener('click',e=>{
 const tab=e.target.closest('[data-series-tab]');if(tab){const details=tab.dataset.seriesTab==='details';el('frame-season-description').hidden=!details;el('frame-episode-results').hidden=details;el('detail-body').querySelector('.frame-episode-title').hidden=details;el('detail-body').querySelectorAll('[data-series-tab]').forEach(b=>b.classList.toggle('active',b===tab));return}
 const season=e.target.closest('[data-select-season]');if(season){activeSeasonId=season.dataset.selectSeason;renderSeries();loadSeriesEpisodes();return}
-const episode=e.target.closest('[data-episode-number]');if(episode){const x=sortedGroup().find(x=>String(x.id)===activeSeasonId);if(!x)return;const n=Number(episode.dataset.episodeNumber);x.watched=n<=Number(x.watched||0)?n-1:n;if(x.watched>0&&x.status==='Plan to Watch')x.status='Watching';if(x.total!=null&&x.watched>=x.total)x.status='Completed';else if(x.status==='Completed')x.status='Watching';save();renderSeries();loadSeriesEpisodes();return}
+const episode=e.target.closest('[data-episode-number]');if(episode){const x=sortedGroup().find(x=>String(x.id)===activeSeasonId);if(!x)return;const n=Number(episode.dataset.episodeNumber);x.watched=n<=Number(x.watched||0)?n-1:n;if(Number(x.total)>0)x.watched=Math.min(x.watched,Number(x.total));if(x.watched>0&&x.status==='Plan to Watch')x.status='Watching';if(Number(x.total)>0&&x.watched>=Number(x.total))x.status='Completed';else if(x.status==='Completed')x.status='Watching';save();renderSeries();loadSeriesEpisodes();return}
 });
 el('detail-body').addEventListener('change',e=>{
 if(!e.target.matches('[data-series-edit]'))return;const x=sortedGroup().find(x=>String(x.id)===activeSeasonId);if(!x)return;
-if(e.target.dataset.seriesEdit==='watched'){let n=Math.max(0,Math.floor(Number(e.target.value)||0));if(x.total!=null)n=Math.min(n,x.total);x.watched=n;if(n>0&&x.status==='Plan to Watch')x.status='Watching';if(x.total!=null&&n>=x.total)x.status='Completed';else if(x.status==='Completed')x.status='Watching'}
+if(e.target.dataset.seriesEdit==='watched'){let n=Math.max(0,Math.floor(Number(e.target.value)||0));if(Number(x.total)>0)n=Math.min(n,Number(x.total));x.watched=n;if(n>0&&x.status==='Plan to Watch')x.status='Watching';if(Number(x.total)>0&&n>=Number(x.total))x.status='Completed';else if(x.status==='Completed')x.status='Watching'}
 else x.status=e.target.value;
 save();renderSeries();loadSeriesEpisodes();
 });
@@ -1106,11 +1106,11 @@ window.addEventListener('unhandledrejection',()=>{},false);
 .frame-guide-no-details{font-size:11px;color:#9991a4}
 .frame-guide-detail p{margin:10px 0 0}
 @media(max-width:600px){.frame-guide-episode{gap:10px;padding:10px}.frame-guide-episode-image{width:90px;height:75px}.frame-guide-episode-content h4{font-size:13px}}
-</style><style id="frame-tmdb-enrichment-style">.frame-tmdb-setup{margin:6px 0 12px;padding:9px 12px;border:1px solid #ffffff25;border-radius:9px;background:#262132;color:#eee3ff;font-size:12px;cursor:pointer}</style><button id="frame-tmdb-global" type="button" aria-label="Configure TMDB episode details">🎬 SET UP TMDB</button>
+</style><style id="frame-tmdb-enrichment-style">.frame-tmdb-setup{margin:6px 0 12px;padding:9px 12px;border:1px solid #ffffff25;border-radius:9px;background:#262132;color:#eee3ff;font-size:12px;cursor:pointer}</style>
 <style id="frame-tmdb-global-css">#frame-tmdb-global{position:fixed;right:16px;top:65px;bottom:auto;z-index:2147483647;background:#282035;color:#f3eaff;border:1px solid #a38cf777;border-radius:24px;padding:10px 14px;font-size:12px;font-weight:800;box-shadow:0 5px 25px #0009;cursor:pointer}@media(min-width:800px){#frame-tmdb-global{top:64px;right:24px}}</style>
 <script id="frame-tmdb-global-js">
 (function(){
-const button=document.getElementById('frame-tmdb-global');
+const button=document.getElementById('frame-tmdb-global');if(!button)return;
 const refresh=()=>{button.textContent='🎬 TMDB AUTO ✓'};
 button.addEventListener('click',()=>{
 const current=localStorage.getItem('frame_tmdb_proxy')||'';
