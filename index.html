@@ -174,12 +174,29 @@ document.querySelectorAll('#season-list .season-choice').forEach(b=>b.classList.
 $('episode-heading').textContent=(m.title.english||m.title.romaji)+' · Episodes';
 $('episode-guide').innerHTML='<div class="season-loading">Loading episodes…</div>';
 if(m.description)$('synopsis').textContent=cleanTitle(m.description);
-let episodes=[];let hasDescriptions=false;
-if(m.idMal){try{const r=await fetch('https://api.jikan.moe/v4/anime/'+m.idMal+'/episodes?limit=100');if(r.ok){const j=await r.json();episodes=(j.data||[]).map(ep=>({number:ep.mal_id,title:ep.title||'',description:ep.synopsis||'',filler:ep.filler}));hasDescriptions=episodes.some(e=>e.description)}}catch{}}
-if(!episodes.length&&m.streamingEpisodes?.length){episodes=m.streamingEpisodes.map((ep,i)=>({number:i+1,title:ep.title||'Episode '+(i+1),description:'',url:ep.url}))}
-if(!episodes.length&&m.episodes&&m.episodes<=120){episodes=Array.from({length:m.episodes},(_,i)=>({number:i+1,title:'Episode '+(i+1),description:''}))}
+let episodes=[];
+const count=Number(m.episodes)||0;
+const known=Math.max(1,Math.min(count||25,50));
+const poster=m.coverImage?.large||m.coverImage?.extraLarge||'';
+const cacheKey=m.idMal?String(m.idMal):'ani-'+m.id;
+try{
+const cached=JSON.parse(localStorage.getItem('frame_episode_titles_v1')||'{}')[cacheKey];
+if(cached?.episodes?.length)episodes=cached.episodes.slice(0,50).map(ep=>({number:ep.n,title:ep.title||'',description:'',filler:ep.filler,still:ep.still||''}));
+}catch{}
+if(!episodes.length&&m.streamingEpisodes?.length)episodes=m.streamingEpisodes.slice(0,50).map((ep,i)=>({number:i+1,title:ep.title||'',description:'',url:ep.url}));
+if(!episodes.length)episodes=Array.from({length:known},(_,i)=>({number:i+1,title:'Episode '+(i+1),description:''}));
 if(generation!==detailGeneration)return;
-$('episode-guide').innerHTML=(episodes.length?'<p class="section-note">Episode summaries appear when the catalog provides them. Unavailable descriptions are not invented.</p><div class="episode-list">'+episodes.map(ep=>'<div class="episode-item"><strong>Episode '+esc(ep.number)+(ep.title&&ep.title!=='Episode '+ep.number?' · '+esc(ep.title):'')+'</strong>'+(ep.description?'<p>'+esc(cleanTitle(ep.description))+'</p>':'<p>Episode description not available.</p>')+(ep.filler?'<p>Filler episode</p>':'')+(ep.url?'<p><a target="_blank" rel="noopener noreferrer" href="'+esc(ep.url)+'">Episode source</a></p>':'')+'</div>').join('')+'</div>':'<p class="section-note">Episode information is not available for this season yet.</p>');
+if(m.idMal&&!episodes.some(ep=>ep.title&&ep.title!=='Episode '+ep.number)){
+const c=new AbortController(),t=setTimeout(()=>c.abort(),4500);
+fetch('https://api.tenrai.org/v1/anime/'+m.idMal+'/episodes?page=1',{signal:c.signal})
+.then(r=>r.ok?r.json():null).then(j=>{
+if(generation!==detailGeneration||!j?.data?.length)return;
+const guide=document.getElementById('episode-guide');if(!guide)return;
+const rows=j.data.slice(0,50).map(ep=>({number:Number(ep.mal_id),title:ep.title||'',description:ep.synopsis||'',filler:ep.filler}));
+guide.innerHTML='<p class="section-note">Episode titles from the anime catalog.</p><div class="episode-list">'+rows.map(ep=>'<div class="episode-item"><strong>Episode '+esc(ep.number)+' · '+esc(ep.title||'Untitled')+'</strong></div>').join('')+'</div>';
+}).catch(()=>{}).finally(()=>clearTimeout(t));
+}
+$('episode-guide').innerHTML=(episodes.length?'<p class="section-note">Episode summaries appear when the catalog provides them. Unavailable descriptions are not invented.</p><div class="episode-list">'+episodes.map(ep=>'<div class="episode-item"><strong>Episode '+esc(ep.number)+(ep.title&&ep.title!=='Episode '+ep.number?' · '+esc(ep.title):'')+'</strong>'+(ep.description?'<p>'+esc(cleanTitle(ep.description))+'</p>':'<p>Episode description not available.</p>')+(ep.filler?'<p>Filler episode</p>':'')+(ep.url?'<p><a target="_blank" rel="noopener noreferrer" href="'+esc(ep.url)+'">Episode source</a></p>':'')+'</div>').join('')+'</div>':'<p class="section-note">Episode names are not currently available. You can still browse the numbered episodes.</p>');
 };
 $('season-list').addEventListener('click',e=>{const b=e.target.closest('[data-season]');if(b){const m=seasons.find(x=>x.id===Number(b.dataset.season));if(m)selectSeason(m)}});
 await selectSeason(seasons.find(m=>m.id===aniId)||root);
